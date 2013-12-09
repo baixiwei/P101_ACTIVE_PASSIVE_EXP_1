@@ -61,7 +61,6 @@ if ($authenticated) {
 if(isset($_SESSION['user'])){
 
 	$studentid = checkSID($_SESSION['user']);
-	$yoked_id = -1;
 	
 	if($studentid == -1)
 	{
@@ -69,8 +68,7 @@ if(isset($_SESSION['user'])){
 		// if no id, add them to database.
 		
 		// get condition assignment
-		$conds = array('SELF_REGULATED', 'BLOCKED', 'RANDOM', 'INTERLEAVED');
-		$condition = array_rand($conds);
+		$condition = assignCondition();
 
 		$insert = mysql_query('INSERT INTO allusers (username, cond) VALUES (\''.$_SESSION['user'].'\','.$condition.')');
 		if($insert) {
@@ -88,20 +86,10 @@ if(isset($_SESSION['user'])){
 		// already had subject in database.
 		//echo 'Student ID: '.$studentid;	
 		$condition = getCondition($_SESSION['user']);
-		if($condition > 0) // if yoked...
-		{
-			$r = mysql_query('SELECT yokeid FROM allusers WHERE username=\''.mysql_real_escape_string($_SESSION['user']).'\'');
-			if($r) {
-				$arr = mysql_fetch_array($r);
-				$y = $arr['yokeid'];
-				if($y!="") { $yoked_id = $y; }
-			}
-		}
 	}
 	
 	$_SESSION['studentid'] = $studentid;
 	$_SESSION['condition'] = $condition;
-	$_SESSION['yokeid'] = $yoked_id;
 }
 
 function checkSID($username) {
@@ -129,6 +117,13 @@ function getCondition($username) {
 		if($arr) { $c = $arr['cond']; }
 	}
 	return $c;
+}
+
+function assignCondition() {
+    // TODO: assign to the condition with the fewest number of subjects
+    
+    $cond = rand(1,21);
+    return $cond;
 }
 	
 ?>
