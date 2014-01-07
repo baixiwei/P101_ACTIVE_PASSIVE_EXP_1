@@ -340,6 +340,10 @@ function generate_content() {
 			success: function(output){
 			    console.log(output);
 			}
+			error: function(output){
+			    console.log(output);
+			    console.log("error");
+			}
 		});
 
         start();
