@@ -336,7 +336,10 @@ function generate_content() {
 			type: 'post',
 			cache: false,
 			url: 'save_sequence.php',
-			data: {"subjid": sid , "sequenceobj": JSON.stringify(training_sequence)}
+			data: {"subjid": sid , "sequenceobj": JSON.stringify(training_sequence)},
+			success: function(output){
+			    console.log(output);
+			}
 		});
 
         start();
