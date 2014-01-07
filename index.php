@@ -216,67 +216,6 @@ function show_consent_form() {
 
 // starting experiment
 
-// registerYokeId: store the yoked id for a subject in the database
-function registerYokeId(subject, yoke){
-	$.ajax({
-		type: 'post',
-		cache: false,
-		url: 'update_yokeid.php',
-		data: {"subjid": subject, "yokeid":yoke },
-		success: function(data)
-		{
-			// do nothing?
-		},
-		error: function()
-		{
-			alert( "There was an error connecting to the database. Error code Y2.");
-		}
-	});	
-}
-
-// yokeThenStart: retrieves information about yoked (previous) participant,
-// which is used to determine which options are available to current participant
-// this is a temporary version which Josh will hopefully replace with a better version
-// the version should ensure that participants who were already yoked would be assigned the same yoked sid on reload
-// and have something to make sure it fails gracefully
-function yokeThenStart( condition, callback ) {
-	$.ajax({ type: "GET", cache: false, url: "yoked_data.csv", dataType: "text",
-		success: function(data) {
-			var rows            = $.csv.toObjects(data);
-            var yoked_sids      = [ 9, 15, 16, 19, 43, 53, 54, 56, 60, 68, 85, 120, 134, 148, 157, 168, 176, 177, 181, 188, 191, 216, 236, 237, 240, 241, 257, 267, 279, 284, 288, 290, 300, 309, 314, 315, 327, 348, 353, 382, 390, 392, 396, 414, 420, 427, 443, 448, 452, 456, 458, 463, 470, 473, 478, 501, 503, 508, 510, 513, 516, 525, 528, 540, 553, 585, 586, 587, 597, 598, 604, 608, 631, 638, 655, 662, 671, 698, 706, 724, 733, 741, 744, 758, 761, 774, 781, 791, 802, 810 ];
-			var yoked_sid       = yoked_sids[ Math.floor( Math.random()*(yoked_sids.length) ) ];
-			if(yokedId > -1){
-				yoked_sid = yokedId;
-			} else {
-				// log yoked id in database
-				registerYokeId(sid, yoked_sid)
-			}
-			var category_seq    = [];
-			var data_seq        = [];
-			var complete_targs  = [0,0,0];
-			var tot_targ        = 0;
-			for ( var i=0; i<rows.length; i++ ) {
-				if ( rows[i].sid==yoked_sid ) {
-					category_seq.push( rows[i].nextCategory );
-					data_seq.push( rows[i].nextData );
-					complete_targs[ {"Mean":0,"Median":1,"Mode":2}[rows[i].category] ] += 1;
-					tot_targ += 1;
-				}
-			}
-            console.log( "Selected yoked sid " + yoked_sid + " from " + yoked_sids.length + " possible sids." );
-            console.log( "If blocking, category sequence should be: " + category_seq.toString() + ", and data sequence should be: " + data_seq.toString() );
-            console.log( "If interleaving/random, total number of trials should be " + tot_targ + " or numbers by categories should be " + complete_targs );
-			callback( { "yoked_sid": yoked_sid, "category_seq": category_seq, "data_seq": data_seq, "complete_targs": complete_targs, "tot_targ": tot_targ } );
-		},
-		error: function(data) {
-			// warning! danger of infinite loop if you uncomment the line below
-			// getYokingInfo( yoked_sid );
-			console.log( "An error occurred. Error code CSV1" );
-			alert( "An error occurred. Error code CSV1" );
-		}
-   }) ;   
-}
-
 function start(){
 	$("#wrapper").html('<div id="target"></div>');
 	var display_loc = $("#target");
@@ -336,18 +275,7 @@ function start(){
 		]
     };
 
-    console.log( "Condition selected or recovered: " + [ "Self-Regulated", "Blocked", "Random", "Interleaved" ][ condition ] );
-
-	if ( condition == SELF_REGULATED ) {
-		// if in the self-regulated condition, start the experiment
-		startExperiment( external_content, display_loc, prepend_data, condition );
-	} else {
-		// if in any of the other conditions, yoke to a previous participant and then start the experiment
-		yokeThenStart( condition, function( yoking_info ) {
-			prepend_data["yoked_sid"] = yoking_info["yoked_sid"];
-			startExperiment( external_content, display_loc, prepend_data, condition, yoking_info );
-		} );
-	}
+	startExperiment( external_content, display_loc, prepend_data, condition );
 }
 </script>
 </html>
