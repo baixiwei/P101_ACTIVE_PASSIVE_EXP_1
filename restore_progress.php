@@ -3,7 +3,7 @@ include('p101_database_connect.php');
 
 $subjid = $_POST['subjid'];
 
-$result = mysql_query('SELECT * FROM trialdata WHERE subjid='.$subjid);
+$result = mysql_query('SELECT * FROM trialdata WHERE subjid='.mysql_real_escape_string($subjid));
 
 //var_dump($result);
 

@@ -5,7 +5,7 @@ include('p101_database_connect.php');
 // variables 
 $subjid = $_POST['subjid']; // subject
 
-$query = 'SELECT sequenceobj FROM sequences WHERE subjid='.$subjid;
+$query = 'SELECT sequenceobj FROM sequences WHERE subjid='.mysql_real_escape_string($subjid);
 
 $result = mysql_query($query);
 
