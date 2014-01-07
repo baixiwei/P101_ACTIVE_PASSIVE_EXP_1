@@ -9,4 +9,6 @@ $subjid = $_POST['subjid']; // subject
 $query = 'INSERT INTO sequences (subjid, sequenceobj) VALUES ('.$subjid.','.$sequenceobj.')';
 
 $result = mysql_query($query);
+
+echo $result;
 ?>
