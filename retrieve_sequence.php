@@ -19,7 +19,8 @@ if($result){
     } else {
         $output = "UNKNOWN";
     }
+    echo $output;
 }
 
-echo $output;
+
 ?>
