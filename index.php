@@ -144,12 +144,15 @@ function assignCondition() {
 </div>
 </body>
 <script type="text/javascript">
+
+
 var sid = <?php echo $_SESSION['studentid']; ?>;
 var condition = <?php echo $_SESSION['condition']; ?>;
-var yokedId = <?php echo $_SESSION['yokeid']; ?>;
 var prepend_data = { "subjid": sid, "cond": condition }
 
+
 // check if they already have seen consent form
+
 $.ajax({
 	type: 'post',
 	cache: false,
@@ -166,8 +169,6 @@ $.ajax({
 		}
 	}
 });
-
-
 
 function show_consent_form() {
 	$("#welcome").html(
@@ -198,7 +199,7 @@ function show_consent_form() {
 					cache: false,
 					url: 'submit_data_mysql.php',
 					data: {"table": "consent", "json": JSON.stringify(data)},
-					success: function(data) { generate_content(); }
+					success: function(data) { set_parameters(); }
 				});
 				
 				// update subject progress in database
@@ -214,10 +215,29 @@ function show_consent_form() {
 	});
 }
 
-// generate content for pretest, tutorial, and posttest
 
+// determine training parameter values based on experimental condition and add them to prepend_data
+// first parameter indicates when we switch from passive to intermediate; second indicates when we switch from intermediate to active
+var parameters;
+function set_parameters() {
+    var parameter_space = [];
+    for ( var i=0; i<6; i++ ) {
+        for ( var j=i; j<6; j++ ) {
+            parameter_space.push( [i,j] );
+        }
+    }
+    parameters = parameter_space[ condition ];
+    prepend_data.param_pass_to_inter    = parameters[0];
+    prepend_data.param_inter_to_act     = parameters[1];
+    generate_content();
+}
+
+
+// generate content for pretest, tutorial, and posttest
 var pretest_questions, posttest_questions, training_questions, training_sequence;
 function generate_content() {
+
+    // pretest questions
     pretest_questions = [
         { "number": 1,
           "text": "1.  Five pizzas were given quality scores by an expert taster.  Their scores were: Pizza World = 8, Slices! = 3, Pisa Pizza = 2, Pizza a go-go = 4, Crusty's = 8. What are the mode, median and mean for this data set?",
@@ -236,8 +256,12 @@ function generate_content() {
           "answers": [ "A) mean = 9, median = 10", "B) mean = 9, median = 9", "C) mean = 8, median = 10", "D) mean = 8, median = 9" ],
           "correct_response": 3 }
         ];
+        
+    // posttest questions
     posttest_questions = [
         ]; // TBD
+
+    // training questions
     training_questions = [
         {prbID: 1, text: "The scores of several students on a 50-point pop quiz are shown below.", ques: "students' test scores", min: 10, max: 50},
         {prbID: 2, text: "The data below shows the numbers of stories of several buildings in a neighborhood.", ques: "number of stories", min: 1, max:50},
@@ -272,13 +296,49 @@ function generate_content() {
         {prbID: 31, text: "The number of visitors to a local museum each month in the past few months is shown below.", ques: "number of visitors", min:1, max:40},
         {prbID: 32, text: "A group of friends went bowling. Below are their scores.", ques:"scores", min:10, max:300}
         ];
+        
+    // training sequence - generate if we're just starting, otherwise retrieve from database
     if ( true ) {
         // eventually should only run when participant first begins the study - if continuing from a previous start, see below
-        
+        var probIDs=[], categories=[], trialtypes=[];
+        // generate problem ID sequence: 3 successive trials for each of 5 randomly selected problem IDs
+        function shuffle(o) { //v1.0
+            for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+            return o;
+        };
+        var all_probIDs = shuffle( training_questions.map( function(el){return el.prbID;} ) );
+        var probID;
+        for ( var i=0; i<5; i++ ) {
+            probID = all_probIDs[i];
+            probIDs = probIDs.concat( [ probID, probID, probID ] );
+        }
+        // generate category sequence: 5 repetitions of a random (but fixed) permutation of Mean, Median, Mode
+        var base_categories = shuffle( ['Mean','Median','Mode'] );
+        for ( var i=0; i<5; i++ ) {
+            categories = categories.concat( base_categories );
+        }
+        // generate trial type sequence (active/intermediate/passive) according to experimental condition
+        for ( var i=0; i<5; i++ ) {
+            if ( i<parameters[0] ) {
+                trialtypes = trialtypes.concat( [ "Passive", "Passive", "Passive" ] );
+            } else if ( i<parameters[1] ) {
+                trialtypes = trialtypes.concat( [ "Intermediate", "Intermediate", "Intermediate" ] );
+            } else {
+                trialtypes = trialtypes.concat( [ "Active", "Active", "Active" ] );
+            }
+        }
+        // save training sequence info in a single object, add to prepend data and database, then start the experiment
+        training_sequence = { "probIDs": probIDs, "categories": categories, "trialtypes": trialtypes };
+        prepend_data.training_sequence = probIDs.concat( categories.concat( trialtypes ) ).toString();
+        // TBD: save training sequence to database so it can be recovered later, then:
+        start();
     } else {
         // eventually should run when continuing from a previous start. recover previously-generated training_sequence, then call start()
+        // TBD: recover training_sequence from database, add it to prepend_data, then:
+        start();
     }
 }
+
 
 // starting experiment
 
