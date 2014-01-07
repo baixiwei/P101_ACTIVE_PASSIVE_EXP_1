@@ -330,7 +330,15 @@ function generate_content() {
         // save training sequence info in a single object, add to prepend data and database, then start the experiment
         training_sequence = { "probIDs": probIDs, "categories": categories, "trialtypes": trialtypes };
         prepend_data.training_sequence = probIDs.concat( categories.concat( trialtypes ) ).toString();
-        // TBD: save training sequence to database so it can be recovered later, then:
+
+        // save training sequence as JSON encoded string in database
+        $.ajax({
+			type: 'post',
+			cache: false,
+			url: 'save_sequence.php',
+			data: {"subjid": sid , "sequenceobj": JSON.stringify(training_sequence)}
+		});
+
         start();
     } else {
         // eventually should run when continuing from a previous start. recover previously-generated training_sequence, then call start()
