@@ -4,22 +4,25 @@
 ///////////////////////////////////////////////////////////////////////////
 
 // global variables
-//  assigned by startExperiment call
-//  only referenced in main experiment structure
+//  global variables assigned by startExperiment call
+// should only be used within startExperiment.js
+var startExperiment_display_loc;
+var startExperiment_prepend_data;
 var startExperiment_pretest_questions;
+var startExperiment_posttest_questions;
 var startExperiment_training_questions;
+var startExperiment_training_sequence;
 var startExperiment_skip;
 
-// other global variables for convenient reference to the 4 experimental conditions
-var SELF_REGULATED  = 0;
-var BLOCKED         = 1;
-var RANDOM          = 2;
-var INTERLEAVED     = 3;
 
 // startExperiment: assign global vars, randomize training questions, and run pretest
-function startExperiment( external_content, display_loc, prepend_data, condition, yoking_info ) {
-    startExperiment_pretest_questions   = external_content.pretest_questions;
-    startExperiment_training_questions  = shuffle( external_content.training_questions.slice(0,external_content.training_questions.length) );
+function startExperiment( display_loc, prepend_data, pretest_questions, posttest_questions, training_questions, training_sequence ) {
+    startExperiment_display_loc         = display_loc;
+    startExperiment_prepend_data        = prepend_data;
+    startExperiment_pretest_questions   = pretest_questions;
+    startExperiment_posttest_questions  = posttest_questions;
+    startExperiment_training_questions  = training_questions;
+    startExperiment_training_sequence   = training_sequence;
     
 	// build skip object here
 	// var skip_training = false; // for debug purposes;
@@ -34,21 +37,21 @@ function startExperiment( external_content, display_loc, prepend_data, condition
 			// progress.training = skip_training;   // for debug purposes
 			startExperiment_skip = progress;
 			
-			doIntroduction( display_loc, prepend_data, condition, yoking_info );
+			doIntroduction();
 		},
 		error: function()
 		{
-			var progress = { "introduction": false, "pretest": false, "instructions": false, "training": false };
+			var progress = { "introduction": false, "pretest": false, "instructions": false, "training": false, "posttest": false };
 			startExperiment_skip = progress;
 			
-			doIntroduction( display_loc, prepend_data, condition, yoking_info );
+			doIntroduction();
 		}
 	});	
 }
 
 // doIntroduction: and then pretest
-function doIntroduction( display_loc, prepend_data, condition, yoking_info ) {
-	var subjectid = prepend_data.subjid;
+function doIntroduction() {
+	var subjid = prepend_data.subjid;
     
 	var callback = function() {
 		// update subject progress in database
@@ -56,24 +59,24 @@ function doIntroduction( display_loc, prepend_data, condition, yoking_info ) {
 			type: 'post',
 			cache: false,
 			url: 'update_progress.php',
-			data: {"sid": subjectid, "flag": "introduction"}
+			data: {"sid": subjid, "flag": "introduction"}
 		});
 		
-        doPretest( display_loc, prepend_data, condition, yoking_info );
+        doPretest();
     }
     var introduction = [
         "<p>The tutorial consists of 4 parts: a short test, instructions, a set of practice problems, and a few background questions. It should take about 30 minutes. Please do it all in one sitting - your work will not be saved if you close the page before finishing.</p><p><em>IMPORTANT:</em> During the tutorial, <em>DO NOT USE</em> your browser's 'Forward', 'Back', or 'Refresh' buttons. If you do, <em>all your work will be lost.</em></p><p>Click below to start.</p>",
         "<h1>Test Section</h1><p>In this section of the tutorial, you will take a short multiple choice test about mean, median, and mode.</p><p>The purpose of this test is to find out how much you already know about these concepts. So, please don't use any outside sources (books, friends, internet).</p><p>This test doesn't count towards your grade, but it's very similar to the test you'll receive later in class, which <strong>will</strong> count towards your grade. So this test is good practice for the real one.</p><p>Please do <em>NOT</em> use a calculator in this section. You won't have a calculator on the test in class, so it's better to practice without one too.</p>"
     ];
 	if( startExperiment_skip.introduction ){
-		doPretest( display_loc, prepend_data, condition, yoking_info );
+		doPretest();
 	} else {
-		doSlideshow( display_loc, introduction, callback );
+		doSlideshow( startExperiment_display_loc, introduction, callback );
 	}
 }
 
 // doPretest: and then show training instructions
-function doPretest( display_loc, prepend_data, condition, yoking_info ) {
+function doPretest() {
     var callback = function() {
 		// update subject progress in database
 		$.ajax({
@@ -84,7 +87,7 @@ function doPretest( display_loc, prepend_data, condition, yoking_info ) {
 		});
 		
 		// next section
-        doInstructions( display_loc, prepend_data, condition, yoking_info );
+        doInstructions();
     };
     if ( startExperiment_skip.pretest ) {
         var questions = []; 
@@ -95,14 +98,14 @@ function doPretest( display_loc, prepend_data, condition, yoking_info ) {
 	// if we are skipping this because someone has already done it,
 	// then we do not want to write a redundant flag to the database
 	if ( questions.length > 0 ) {
-		doRadioSurvey( questions, "pretestdata", display_loc, prepend_data, callback );
+		doRadioSurvey( questions, "pretestdata", startExperiment_display_loc, startExperiment_prepend_data, callback );
 	} else {
-		doInstructions( display_loc, prepend_data, condition, yoking_info );
+		doInstructions();
 	}
 }
 
 // doInstructions: and then run the training
-function doInstructions( display_loc, prepend_data, condition, yoking_info ) {
+function doInstructions() {
     var callback = function() {
 		// update subject progress in database
 		$.ajax({
@@ -113,7 +116,7 @@ function doInstructions( display_loc, prepend_data, condition, yoking_info ) {
 		});
 		
 		// next section
-        doTraining( display_loc, prepend_data, condition, yoking_info );
+        doTraining();
     };
     var instructions = [
         "<h1>Instruction Section</h1><p>This section of the tutorial will explain to you more about the concepts of mean, median, and mode.</p>", "<h2>Mean</h2><p>The <strong>mean</strong> is the same as the <strong>average</strong>. To find the mean of a set of numbers, divide their sum by how many numbers there are.</p><p>For example, if the numbers are [ 10, 8, 8, 4, 5, 6, 8 ], then their sum is 49, and there are 7 numbers. So the mean is 49/7=7.</p>",
@@ -130,7 +133,7 @@ function doInstructions( display_loc, prepend_data, condition, yoking_info ) {
     var button_00 = '<button type="button" class="option_buttons">Find the <em>Mean</em> for a <em>modified set of data</em>.</button>';
     var button_10 = '<button type="button" class="option_buttons">Find the <em>Mean</em> for a <em>different story problem</em>.</button>';
     var button_01 = '<button type="button" class="option_buttons">Find the <em>Median</em> for the <em>same set of data</em>.</button>';
-    var complete_targs = getCompleteTargs( condition, yoking_info );
+    var complete_targs = getCompleteTargs( pretest_questions, posttest_questions, training_questions, training_sequence );
     var progbar = "<table border='1'><tr>" + // "<table border='1'><tr><td colspan='3'>Your Progress</td></tr><tr>" +
         "<td><strong>Mean</strong><br>2 out of " + complete_targs[0] + " complete</td>" +
         "<td><strong>Median</strong><br>1 out of " + complete_targs[1] + " complete</td>" +
@@ -155,14 +158,14 @@ function doInstructions( display_loc, prepend_data, condition, yoking_info ) {
     }
     if ( startExperiment_skip.instructions ) 
 	{ 
-		doTraining( display_loc, prepend_data, condition, yoking_info );
+		doTraining();
 	} else {
-		doSlideshow( display_loc, instructions, callback );
+		doSlideshow( startExperiment_display_loc, instructions, callback );
 	}
 }
 
 // doTraining: and then go to background demographics
-function doTraining( display_loc, prepend_data, condition, yoking_info ) {
+function doTraining() {
     // callback is called at the end of training
     var callback = function( data ) {
 		// update subject progress in database
@@ -174,11 +177,11 @@ function doTraining( display_loc, prepend_data, condition, yoking_info ) {
 		});
 	
            // display_loc.html( JSON.stringify( data ) );
-        doDemographics( display_loc, prepend_data );
+        doDemographics(); // TBD: should be doPosttest();
     };
 	// check to see if there is any progress
     if ( startExperiment_skip.training ) {
-        doDemographics( display_loc, prepend_data );
+        doDemographics(); // TBD: should be doPosttest();
     } else {
         $.ajax({
             type: 'post',
@@ -186,6 +189,8 @@ function doTraining( display_loc, prepend_data, condition, yoking_info ) {
             url: 'restore_progress.php',
             data: {"subjid": prepend_data.subjid},
             success: function(data) {
+                // TBD: revise according to the info needed by the revised trial generator class
+                
                 // trial_data will contain an array with each element representing the trial
                 // data can be accessed by name, i.e. trial_data[0].correct will indicate whether the first trial was correct or not.
                 var trial_data = JSON.parse(data);
@@ -206,21 +211,21 @@ function doTraining( display_loc, prepend_data, condition, yoking_info ) {
                         next_category = [ "Mean", "Median", "Mode" ][ Math.floor( Math.random()*3 ) ];
                     }
                     // create a trial generator using the progress information
-                    var trial_generator = new TrialGenerator( startExperiment_training_questions, progress_by_category, condition, yoking_info );
+                    var trial_generator = new TrialGenerator( startExperiment_training_questions, progress_by_category, pretest_questions, posttest_questions, training_questions, training_sequence );
                     var iter_num    = trial_data.length;
                     var option_text = "recovery: " + next_category;
                     iterateTrialGenerator( display_loc, prepend_data, trial_generator, iter_num, option_text, trial_data, callback );
                 } else {
                     // this likely means that they did not complete any trials, and therefore should start from scratch.
                     // we do that by just creating a trial generator without previous progress information
-                    var trial_generator = new TrialGenerator( startExperiment_training_questions, { "Mean": 0, "Median": 0, "Mode": 0 }, condition, yoking_info );
+                    var trial_generator = new TrialGenerator( startExperiment_training_questions, { "Mean": 0, "Median": 0, "Mode": 0 }, pretest_questions, posttest_questions, training_questions, training_sequence );
                     iterateTrialGenerator( display_loc, prepend_data, trial_generator, 0, "first trial", [], callback );
                 }
             },
             error: function(){
                 // this likely means that they did not complete any trials, and therefore should start from scratch.
                 // we do that by just creating a trial generator without previous progress information
-                var trial_generator = new TrialGenerator( startExperiment_training_questions, { "Mean": 0, "Median": 0, "Mode": 0 }, condition, yoking_info );
+                var trial_generator = new TrialGenerator( startExperiment_training_questions, { "Mean": 0, "Median": 0, "Mode": 0 }, pretest_questions, posttest_questions, training_questions, training_sequence );
                 iterateTrialGenerator( display_loc, prepend_data, trial_generator, 0, "first trial", [], callback );
             }
         });
@@ -228,9 +233,9 @@ function doTraining( display_loc, prepend_data, condition, yoking_info ) {
 }
 
 // doDemographics: and then end the experiment
-function doDemographics( display_loc, prepend_data ) {
+function doDemographics() {
     var callback = function() {
-        endExperiment( display_loc );
+        endExperiment();
     }
     var questions = [
         { "number": 0,
@@ -257,15 +262,12 @@ function doDemographics( display_loc, prepend_data ) {
           "text": "<p>When doing the practice examples, did you sometimes compare an example to the previous example?</p>",
           "answers": [ "No", "Yes" ] }
     ];
-    doRadioSurvey( questions, "demographicdata", display_loc, prepend_data, callback );
+    doRadioSurvey( questions, "demographicdata", startExperiment_display_loc, startExperiment_prepend_data, callback );
 }    
           
 // endExperiment: records completion data and displays completion message
-/*
-TBD (Josh?/David): right now this just displays the accumulated data so we know it's working. Eventually we need it to close down gracefully, possibly saving some info about completion to database (Josh?) and display a nice message to the participant (David).
-*/
-function endExperiment( display_loc ) {
-    display_loc.html( "<p>The tutorial is now complete and your data has been recorded. Thank you for your participation! You may now close this browser window.</p>" );
+function endExperiment() {
+    startExperiment_display_loc.html( "<p>The tutorial is now complete and your data has been recorded. Thank you for your participation! You may now close this browser window.</p>" );
 }
 
 
@@ -515,7 +517,7 @@ function doTrial( display_loc, callback ) {
     window.scrollTo(0,0);
 }
 
-function getCompleteTargs( condition, yoking_info ) {
+function getCompleteTargs( pretest_questions, posttest_questions, training_questions, training_sequence ) {
     if ( condition==SELF_REGULATED ) {
         return( [ 5, 5, 5 ] );
     } else if ( ( condition==BLOCKED ) || ( condition==RANDOM ) ) {
@@ -530,7 +532,7 @@ function getCompleteTargs( condition, yoking_info ) {
 }
 
 // TrialGenerator class
-TrialGenerator = function( questions, progress_by_category, condition, yoking_info ) {
+TrialGenerator = function( questions, progress_by_category, pretest_questions, posttest_questions, training_questions, training_sequence ) {
     this.stories        = questions;
     this.categories     = [ "Mean", "Median", "Mode" ];
     this.condition      = condition;
@@ -553,7 +555,7 @@ TrialGenerator = function( questions, progress_by_category, condition, yoking_in
     // complete_targ stores the minimum number to be completed per category before Quit is available
     this.complete_targ  = 5;
     // complete_targs stores the number to be completed PER CATEGORY, which might differ from the above in conditions other than self-regulated
-    this.complete_targs = getCompleteTargs( condition, yoking_info );
+    this.complete_targs = getCompleteTargs( pretest_questions, posttest_questions, training_questions, training_sequence );
     // if we are in the blocked condition, we also need to store the specific sequence of category and data selections
     if ( this.condition==BLOCKED ) {
         this.category_seq   = yoking_info["category_seq"];      // determines which category is available for each trial
