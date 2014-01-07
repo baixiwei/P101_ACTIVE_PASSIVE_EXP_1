@@ -10,10 +10,15 @@ $query = 'SELECT sequenceobj FROM sequences WHERE subjid='.$subjid);
 $result = mysql_query($query);
 
 if($result){
-	while($row = mysql_fetch_array($result, MYSQL_ASSOC)){
-		// push row to array
-		$output = $row['sequenceobj'];
-	}
+    $num_results = mysql_num_rows($result);
+    if($num_results > 0){
+    	while($row = mysql_fetch_array($result, MYSQL_ASSOC)){
+    		// push row to array
+    		$output = $row['sequenceobj'];
+    	}
+    } else {
+        $output = "UNKNOWN";
+    }
 }
 
 echo $output;

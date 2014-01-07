@@ -229,13 +229,30 @@ function set_parameters() {
     parameters = parameter_space[ condition ];
     prepend_data.param_pass_to_inter    = parameters[0];
     prepend_data.param_inter_to_act     = parameters[1];
-    generate_content();
+    //generate_content();
+    recover_sequence();
+}
+
+var training_sequence;
+function recover_sequence(){
+    // try to recover from database
+    $.ajax({
+		type: 'post',
+		cache: false,
+		url: 'retrieve_sequence.php',
+		data: {"subjid": sid},
+		success: function(output){
+		    training_sequence = JSON.parse(output);
+		    var new_user = (training_sequence == "UNKNOWN");
+		    generate_content(new_user);
+		}
+	});
 }
 
 
 // generate content for pretest, tutorial, and posttest
-var pretest_questions, posttest_questions, training_questions, training_sequence;
-function generate_content() {
+var pretest_questions, posttest_questions, training_questions;
+function generate_content(new_user) {
 
     // pretest questions
     pretest_questions = [
@@ -298,7 +315,7 @@ function generate_content() {
         ];
         
     // training sequence - generate if we're just starting, otherwise retrieve from database
-    if ( true ) {
+    if ( new_user ) {
         // eventually should only run when participant first begins the study - if continuing from a previous start, see below
         var probIDs=[], categories=[], trialtypes=[];
         // generate problem ID sequence: 3 successive trials for each of 5 randomly selected problem IDs
@@ -342,17 +359,9 @@ function generate_content() {
         start();
     } else {
         // eventually should run when continuing from a previous start. recover previously-generated training_sequence, then call start()
-        $.ajax({
-			type: 'post',
-			cache: false,
-			url: 'retrieve_sequence.php',
-			data: {"subjid": sid},
-			success: function(output){
-			    training_sequence = JSON.parse(output);
-			    // todo: add training sequence to prepend data?
-			    start();
-			}
-		});
+         prepend_data.training_sequence = training_sequence.probIDs.concat( training_sequence.categories.concat( training_sequence.trialtypes ) ).toString();
+         
+         start();
     }
 }
 
