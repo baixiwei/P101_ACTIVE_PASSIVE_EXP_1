@@ -242,8 +242,10 @@ function recover_sequence(){
 		url: 'retrieve_sequence.php',
 		data: {"subjid": sid},
 		success: function(output){
-		    training_sequence = JSON.parse(output);
-		    var new_user = (training_sequence == "UNKNOWN");
+		    var new_user = (output == "UNKNOWN");
+		    if(!new_user){
+		        training_sequence = JSON.parse(output);
+		    }
 		    generate_content(new_user);
 		}
 	});
