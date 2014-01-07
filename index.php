@@ -342,8 +342,17 @@ function generate_content() {
         start();
     } else {
         // eventually should run when continuing from a previous start. recover previously-generated training_sequence, then call start()
-        // TBD: recover training_sequence from database, add it to prepend_data, then:
-        start();
+        $.ajax({
+			type: 'post',
+			cache: false,
+			url: 'retrieve_sequence.php',
+			data: {"subjid": sid},
+			success: function(output){
+			    training_sequence = JSON.parse(output);
+			    // todo: add training sequence to prepend data?
+			    start();
+			}
+		});
     }
 }
 
