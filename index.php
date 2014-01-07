@@ -339,7 +339,7 @@ function generate_content() {
 			data: {"subjid": sid , "sequenceobj": JSON.stringify(training_sequence)},
 			success: function(output){
 			    console.log(output);
-			}
+			},
 			error: function(output){
 			    console.log(output);
 			    console.log("error");
