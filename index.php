@@ -162,7 +162,7 @@ $.ajax({
 		if(data==1)
 		{
 			// they have seen consent form
-			recover_sequence();
+			set_parameters();
 		} else {
 			// show consent form
 			show_consent_form();

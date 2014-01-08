@@ -364,12 +364,19 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
         // save data, then increment idx and either call the callback or do another iteration
         // TBD, below is a placeholder
         var trial_data = $.extend( {}, prepend_data, data );
+        var str = "";
+        for ( key in trial_data ) {
+            str += "<p>" + key + ": " + trial_data[key] + "</p>";
+        }
         console.log( "Trial " + trial_idx + " completed, submitting data." );
+        display_loc.html( str );
+        /*
         if ( trial_idx<sequence.probIDs.length ) {
             doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx+1, callback );
         } else {
             callback();
         }
+        */
     }
     var trial_spec = createTrialSpec( problems, sequence, trial_idx );
     displayTutorialTrial( display_loc, trial_spec, endTrial );
