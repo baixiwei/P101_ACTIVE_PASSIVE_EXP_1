@@ -393,35 +393,30 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
 
 // create all the content needed to display the trial and return it as an associative array
 function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
-    /*  TBD, what's below is a placeholder. Eventually we'll need at least:
-        text of question
-        data set
-        text of first and second prompts
-        correct answer for first and second prompts
-        progress bar info
-        which if any of prompts should have answer displayed
-        feedback to give in event of incorrect answers
-    */
+    var category    = sequence.categories[trial_idx];                                       // category for current trial
+    var trialtype   = sequence.trialtypes[trial_idx];                                       // trial type (passive, intermediate, active)
+    var progbar     = "<p>Placeholder for progress bar.</p>";                               // progress bar (TBD)
     var probID      = sequence.probIDs[trial_idx];
-    var problem     = problems.filter( function(prob) { return prob.prbID==probID; } )[0];
-    var probtxt     = problem.text;
-    var category    = sequence.categories[trial_idx];
-    var trialtype   = sequence.trialtypes[trial_idx];
-    var dataset     = ((trial_idx%3==0)||(prev_dataset==undefined)) ? generateNewDataset( problem.min, problem.max ) : prev_dataset;
-    var dataset_str = stringifyDataset( dataset );
-    var q1_key      = "placeholder";
-    var q1_given    = true;
-    var q2_key      = 1;
-    var q2_given    = true;
+    var problem     = problems.filter( function(prob) { return prob.prbID==probID; } )[0];  // problem for current trial
+    var probtxt     = "<p>" + problem.text + "</p>";                                        // text of story
+    var dataset     = ((trial_idx%3==0)||(prev_dataset==undefined)) ?                       // dataset for current trial
+                      generateNewDataset( problem.min, problem.max ) : prev_dataset;
+    var dataset_str = stringifyDataset( dataset );                                          // pretty version of dataset
+    var question    = getQuestion( problem, category );                                     // text of the question to be answered
+    var text        = progbar + probtxt + dataset_str + question;                           // text block to appear before prompts
+    var q1_text     = getStepPrompt( category, 1 );                                         // text of first solution step prompt
+    var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
+    var q1_given    = false;                                                                // whether answer to first step is given (TBD)
+    var q2_text     = getStepPrompt( category, 2 );                                         // text of second solution step prompt
+    var q2_key      = getStepKey( dataset, category, 2 );                                   // answer key for second step
+    var q2_given    = false;                                                                // whether answer to first step is given (TBD)
+    text            += "<p>The trial type is " + trialtype + ".</p>";                       // testing only
+    text            += "<p>" + q1_text + "</p><p>" + q2_text + "</p>";                      // testing only
+    /* TBD: feedback for incorrect answers */
     var data = {
         "trial_num": trial_idx, "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
-        "q1_key": q1_key, "q1_given": Number(q1_given), "q2_key": q2_key, "q2_given": q2_given };
-    var text = 
-        "<p>This is trial number " + trial_idx + ".</p>" +
-        "<p>The story ID is " + probID + " and the actual story text is: '" + probtxt + "'.</p>" +
-        "<p>The dataset is " + dataset_str +
-        "<p>The trial type is " + trialtype + " and the category is " + category + ".</p>";
-    return { "text": text, "q1_key": q1_key, "q1_given": q1_given, "q2_key": q2_key, "q2_given": q2_given, "data": data };
+        "q1_key": q1_key, "q1_given": Number(q1_given), "q2_key": q2_key, "q2_given": Number(q2_given) };
+    return { "text": text, "q1_text": q1_text, "q1_key": q1_key, "q1_given": q1_given, "q2_text": q2_text, "q2_key": q2_key, "q2_given": q2_given, "data": data };
 }
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
@@ -467,6 +462,34 @@ function stringifyDataset( ds ) {
     }
     result = result.substring(0,result.length-2) + "</p>";
     return result;
+}
+
+function getQuestion( problem, category ) {
+    return (category=="Mean") ?
+        "<p>Find the <em>Mean</em> of the " + problem.ques + ". (Round off decimals to two decimal places.)</p>" :
+        "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
+}
+
+// TBD: generate prompts for solution steps 1 and 2 for each category
+function getStepPrompt( category, step ) {
+    return "Placeholder for " + category + " solution step " + step;
+}
+
+// TBD: generate answer keys for solution steps 1 and 2 for each category
+function getStepKey( dataset, category, step ) {
+    return [ "Placeholder", getCentTend( dataset, category ) ][ step ];
+}
+
+function getCentTend( dataset, measure ) {
+    if ( measure=="Mean" ) {
+        var x = getMean( dataset );
+        x = Math.round( x*100 ) / 100;
+        return x;
+    } else if ( measure=="Median" ) {
+        return getMedian( dataset );
+    } else if ( measure=="Mode" ) {
+        return getMode( dataset );
+    }
 }
 
 
@@ -963,18 +986,6 @@ function getNextDataset( relation, min, max ) {
     }
     this.dataset = dataset;
     return result;
-}
-
-function getCentTend( dataset, measure ) {
-    if ( measure=="Mean" ) {
-        var x = getMean( dataset );
-        x = Math.round( x*100 ) / 100;
-        return x;
-    } else if ( measure=="Median" ) {
-        return getMedian( dataset );
-    } else if ( measure=="Mode" ) {
-        return getMode( dataset );
-    }
 }
 
 function getFeedback( dataset, measure ) {
