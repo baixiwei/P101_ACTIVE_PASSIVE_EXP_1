@@ -395,7 +395,7 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
 function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var category    = sequence.categories[trial_idx];                                       // category for current trial
     var trialtype   = sequence.trialtypes[trial_idx];                                       // trial type (passive, intermediate, active)
-    var progbar     = "<p>Placeholder for progress bar.</p>";                               // progress bar (TBD)
+    var progbar     = getProgressBar( trial_idx, sequence.probIDs.length );                 // progress bar
     var probID      = sequence.probIDs[trial_idx];
     var problem     = problems.filter( function(prob) { return prob.prbID==probID; } )[0];  // problem for current trial
     var probtxt     = "<p>" + problem.text + "</p>";                                        // text of story
@@ -406,12 +406,14 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var text        = progbar + probtxt + dataset_str + question;                           // text block to appear before prompts
     var q1_text     = getStepPrompt( category, 1 );                                         // text of first solution step prompt
     var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
-    var q1_given    = false;                                                                // whether answer to first step is given (TBD)
     var q2_text     = getStepPrompt( category, 2 );                                         // text of second solution step prompt
     var q2_key      = getStepKey( dataset, category, 2 );                                   // answer key for second step
-    var q2_given    = false;                                                                // whether answer to first step is given (TBD)
+    var givens      = getStepPromptGivens( trialtype );                                     // determine which solution steps are to be presented already solved
+    var q1_given    = givens[0];                                                            // whether answer to first step is given
+    var q2_given    = givens[1];                                                            // whether answer to second step is given
     text            += "<p>The trial type is " + trialtype + ".</p>";                       // testing only
-    text            += "<p>" + q1_text + "</p><p>" + q2_text + "</p>";                      // testing only
+    text            += "<p>" + q1_text + " (solution would " + ["not be given","be given"][Number(q1_given)] + ").</p>";
+    text            += "<p>" + q2_text + " (solution would " + ["not be given","be given"][Number(q2_given)] + ").</p>";
     /* TBD: feedback for incorrect answers */
     var data = {
         "trial_num": trial_idx, "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
@@ -452,50 +454,20 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
 
 
 //////////////////////////////////////////////////////////////////////
-// helper functions for createTrialSpec, except dataset generation
+// helper functions for createTrialSpec
 //////////////////////////////////////////////////////////////////////
 
-function stringifyDataset( ds ) {
-    var result = "<p>Data set: ";
-    for ( var i=0; i<ds.length; i++ ) {
-        result += ds[i] + ", ";
-    }
-    result = result.substring(0,result.length-2) + "</p>";
-    return result;
+// create a progress bar
+function getProgressBar( complete, total ) {
+    var width   = $('#target').width()-200;
+    var height  = 20; 
+    var padding = 3;
+    var content = "<table><tr><td style='vertical-align:middle; width: "+150+"px'>Your progress:  </td><td>";
+    content     += "<div style='background-color: gray; border-radius: "+((height/2)+padding)+"px; padding: "+padding+"px; width: "+width+"px'>";
+    content     += "<div style='background-color: #00FF99; width: "+(Math.floor(100*complete/total))+"%; height: "+height+"px; border-radius: "+(height/2)+"px'>";
+    content     += "</div></div></td></tr></table><br>";
+    return content;
 }
-
-function getQuestion( problem, category ) {
-    return (category=="Mean") ?
-        "<p>Find the <em>Mean</em> of the " + problem.ques + ". (Round off decimals to two decimal places.)</p>" :
-        "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
-}
-
-// TBD: generate prompts for solution steps 1 and 2 for each category
-function getStepPrompt( category, step ) {
-    return "Placeholder for " + category + " solution step " + step;
-}
-
-// TBD: generate answer keys for solution steps 1 and 2 for each category
-function getStepKey( dataset, category, step ) {
-    return [ "Placeholder", getCentTend( dataset, category ) ][ step ];
-}
-
-function getCentTend( dataset, measure ) {
-    if ( measure=="Mean" ) {
-        var x = getMean( dataset );
-        x = Math.round( x*100 ) / 100;
-        return x;
-    } else if ( measure=="Median" ) {
-        return getMedian( dataset );
-    } else if ( measure=="Mode" ) {
-        return getMode( dataset );
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////
-// dataset generation and modification
-//////////////////////////////////////////////////////////////////////
 
 // generateAndTest:
 //  call func until test applied to its output returns true or counter runs out
@@ -538,160 +510,6 @@ function generateNewDataset( min, max ) {
     return result;
 }
 
-var generateModifiedDataset_counter = Math.floor(Math.random()*3);
-
-function generateModifiedDataset( ds, min, max ) {
-    var new_ds;
-    var selector = ( generateModifiedDataset_counter % 3 );
-    generateModifiedDataset_counter++;
-    if ( selector==0 ) {
-        new_ds = generateModifiedDatasetChangeMode( ds, min, max );
-        if (!new_ds) { alert( "generateModifiedDatasetChangeMode failed" ); }
-    } else if ( selector==1 ) {
-        new_ds = generateModifiedDatasetChangeMedian( ds, min, max );
-        if (!new_ds) { alert( "generateModifiedDatasetChangeMedian failed" ); }
-    } else if ( selector==2 ) {
-        new_ds = generateModifiedDatasetRandom( ds, min, max );
-        if (!new_ds) { alert( "generateModifiedDatasetRandom failed" ); }
-    }
-    return new_ds;
-}
-
-function generateModifiedDatasetRandom( ds, min, max ) {
-    var generator = function() {
-        var modify_type;
-        if (ds.length<=6) {
-            modify_type = ["add","substitute"][Math.floor(Math.random()*2)];
-        } else if (ds.length>=8) {
-            modify_type = ["remove","substitute"][Math.floor(Math.random()*2)];
-        } else if (ds.length==7) {
-            modify_type = ["add","remove","substitute"][Math.floor(Math.random()*3)];
-        }
-        var new_ds;
-        switch (modify_type) {
-            case "add":
-                new_ds = ds.slice(0,ds.length);
-                new_ds.push( randRange(min,max) );
-                new_ds.push( randRange(min,max) );
-                break;
-            case "remove":
-                var del_idxs = randomSubsetIdxs(ds,2);
-                new_ds = removeElsByIdxs(ds,del_idxs);
-                break;
-            case "substitute":
-                var sub_idx = randomSubsetIdxs(ds,1)[0];
-                var new_num;
-                do {
-                    new_num = randRange(min,max);
-                } while ( new_num==ds[sub_idx] );
-                new_ds = ( ds.slice(0,sub_idx) );
-                new_ds.push( new_num );
-                new_ds = new_ds.concat( ds.slice(sub_idx+1,ds.length) );
-                break;
-        }
-        return new_ds;
-    }
-    var result = generateAndTest( generator, isDatasetNice, 5000 );
-    return result;
-}
-
-function generateModifiedDatasetChangeMode( ds, min, max ) {
-    var ds_profile = getFrequencyProfile( ds );
-    var selector;
-    if ( ( ds_profile.frequencies[0]==2 ) && ( ds_profile.frequencies[1]==1 ) ) {
-        // for datasets with mode freq 2
-        //  selector 0: add 2 copies of an element with freq 1, making it the new mode
-        //  selector 1: change one instance of the mode to one of the other elements, making it the new mode
-        if ( ds.length<=7 ) {
-            selector = 0;       // both 0 and 1 are possible here, but I prefer 0
-        } else {
-            selector = 1;       // only 1 is possible here: cannot add to the set if its length is >7
-        }
-    } else if ( ( ds_profile.frequencies[0]==3 ) && ( ds_profile.frequencies[1]==2 ) ) {
-        // for datasets with mode freq 3
-        //  selector 2: remove 2 copies of the mode, making the element with freq 2 the new mode
-        //  selector 3: change one instance of the mode to a freq 2 element, making that element the new mode
-        if ( ds_profile.frequencies[2]==2 ) {
-            // must be >=3 different elements as required by isDatasetNice, so above test always possible
-            selector = 3;       // only 3 is possible here: removing 2 mode instances would create ambiguous mode
-        } else {
-            selector = 2;       // both 2 and 3 are possible here, but I prefer 2
-        }
-    }
-    switch ( selector ) {
-        case 0: // choose one of the elements whose freq is 1 and increase its freq to 3
-            var add_el = ds_profile.elements.slice(1,ds_profile.elements.length)[ Math.floor(Math.random()*(ds_profile.elements.length-1)) ];
-            var new_ds = (ds.slice(0,ds.length)).concat( [ add_el, add_el ] );
-            break;
-        case 1: // change one instance of the freq 2 element to some freq 1 element
-            var add_idx = 1 + Math.floor( Math.random() * ( ds_profile.elements.length-1 ) );
-            var new_ds = []; var f;
-            for ( var i=0; i<ds_profile.elements.length; i++ ) {
-                if ( i==0 ) {
-                    f=1;
-                } else if ( i==add_idx ) {
-                    f=2;
-                } else {
-                    f=ds_profile.frequencies[i];
-                }
-                for ( var j=0; j<f; j++ ) {
-                    new_ds.push( ds_profile.elements[i] );
-                }
-            }            
-            break;
-        case 2: // remove 2 of the freq 3 element
-            var new_ds = []; var f;
-            for ( var i=0; i<ds_profile.elements.length; i++ ) {
-                if ( i==0 ) {
-                    f=1;
-                } else {
-                    f=ds_profile.frequencies[i];
-                }
-                for ( var j=0; j<f; j++ ) {
-                    new_ds.push( ds_profile.elements[i] );
-                }
-            }            
-            break;
-        case 3: // change one instance of the freq 3 element to a freq 2 element
-            var new_ds = []; var f;
-            for ( var i=0; i<ds_profile.elements.length; i++ ) {
-                if ( i==0 ) {
-                    f=2;
-                } else if ( i==1 ) {
-                    f=3;
-                } else {
-                    f=ds_profile.frequencies[i];
-                }
-                for ( var j=0; j<f; j++ ) {
-                    new_ds.push( ds_profile.elements[i] );
-                }
-            }
-            break;
-    }
-    if (!new_ds) {
-        alert( "false dataset: " + ds + "; selector: " + selector );
-    } else if (!isDatasetNice(new_ds)) {
-        alert( "naughty dataset: " + new_ds + " derived from " + ds + " via selector " + selector );
-    }
-    return new_ds;        
-}
-
-function generateModifiedDatasetChangeMedian( ds, min, max ) {
-    var ds_median = getMedian(ds);
-    var generator = function() {
-        return generateModifiedDatasetRandom(ds,min,max);
-    }
-    var testfunc = function(new_ds) {
-        return ( isDatasetNice(new_ds) && ( getMedian(new_ds)!=ds_median ) );
-    }
-    var new_ds = generateAndTest( generator, testfunc, 1000 );
-    if ( new_ds ) {
-        return new_ds;
-    } else {
-        return generateModifiedDatasetRandom( ds, min, max );
-    }
-}
-
 function isDatasetNice(ds) {
     var dsprof  = getFrequencyProfile(ds);
     return     true
@@ -700,6 +518,55 @@ function isDatasetNice(ds) {
             && ( dsprof.frequencies[0]<=3 )                         // mode is 3 or less
             && ( dsprof.frequencies[0]==(dsprof.frequencies[1]+1) ) // contains an el with frequency = mode frequency - 1
             ;
+}
+
+// convert dataset to text string that can be presented to the user
+function stringifyDataset( ds ) {
+    var result = "<p>Data set: ";
+    for ( var i=0; i<ds.length; i++ ) {
+        result += ds[i] + ", ";
+    }
+    result = result.substring(0,result.length-2) + "</p>";
+    return result;
+}
+
+// create text of the actual question the user is supposed to answer
+function getQuestion( problem, category ) {
+    return (category=="Mean") ?
+        "<p>Find the <em>Mean</em> of the " + problem.ques + ". (Round off decimals to two decimal places.)</p>" :
+        "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
+}
+
+// TBD: generate prompts for solution steps 1 and 2 for each category
+function getStepPrompt( category, step ) {
+    return "Placeholder for " + category + " solution step " + step;
+}
+
+// TBD: generate answer keys for solution steps 1 and 2 for each category
+function getStepKey( dataset, category, step ) {
+    return [ "Placeholder", getCentTend( dataset, category ) ][ step ];
+}
+
+// determine which solution steps are to be presented already solved
+function getStepPromptGivens( trialtype ) {
+    return {
+        "Active":       [false,false],
+        "Passive":      [true,true],
+        "Intermediate": [[false,true],[true,false]][Math.floor(Math.random()*2)]
+        }[trialtype];
+}
+
+// determine the mean, median, or mode of a dataset
+function getCentTend( dataset, measure ) {
+    if ( measure=="Mean" ) {
+        var x = getMean( dataset );
+        x = Math.round( x*100 ) / 100;
+        return x;
+    } else if ( measure=="Median" ) {
+        return getMedian( dataset );
+    } else if ( measure=="Mode" ) {
+        return getMode( dataset );
+    }
 }
 
 
@@ -824,43 +691,6 @@ function getCompleteTargs( pretest_questions, posttest_questions, training_quest
     }
 }
 
-// TrialGenerator class
-TrialGenerator = function( questions, progress_by_category, pretest_questions, posttest_questions, training_questions, training_sequence ) {
-    this.stories        = questions;
-    this.categories     = [ "Mean", "Median", "Mode" ];
-    this.condition      = condition;
-    this.yoking_info    = yoking_info;
-    // completes_tot stores total number currently completed in each category
-    // if we are starting from scratch, set this to 0 for each category
-    // otherwise, recover the appropriate value for each category from progress_by_category
-    this.completes_tot  = [];
-    if ( progress_by_category==undefined ) {
-        for ( var i=0; i<this.categories.length; i++ ) {
-            this.completes_tot[i] = 0;
-        }
-    } else {
-        for ( var i=0; i<this.categories.length; i++ ) {
-            this.completes_tot[i] = progress_by_category[ this.categories[i] ];
-        }
-    }
-    // completes_rct stores number completed in each category since last change of story or data set
-    this.completes_rct  = [];
-    // complete_targ stores the minimum number to be completed per category before Quit is available
-    this.complete_targ  = 5;
-    // complete_targs stores the number to be completed PER CATEGORY, which might differ from the above in conditions other than self-regulated
-    this.complete_targs = getCompleteTargs( pretest_questions, posttest_questions, training_questions, training_sequence );
-    // if we are in the blocked condition, we also need to store the specific sequence of category and data selections
-    if ( this.condition==BLOCKED ) {
-        this.category_seq   = yoking_info["category_seq"];      // determines which category is available for each trial
-        this.data_seq       = yoking_info["data_seq"];          // determines which data relation is available for each trial
-    }
-    // the following methods are used to create trial specifications when iterateTrialGenerator is called
-    this.getNextTrial       = getNextTrial;
-    this.getOptionsText     = getOptionsText;
-    this.getNextDataset     = getNextDataset;
-    this.getProgressBar     = getProgressBar;
-}
-
 // getNextTrial(): method of TrialGenerator class
 //  given the option selected by user on previous trial, or "first trial" if there is no previous trial,
 //  generate TrialSpec object for the next trial
@@ -956,15 +786,6 @@ function getNextTrial( option_text, iter_num ) {
         "storyidx": this.stories[this.story_idx].prbID, "category": cat, "dataset": this.dataset.toString(), "answerkey": answer
     };
     return new TrialSpec( cat, content, answer, feedback, options, data );
-}
-
-function getProgressBar() {
-    var bar = "<ul>"; 
-    for ( var i=0; i<this.categories.length; i++ ) {
-        bar += "<li><h4>"+this.categories[i]+":</h4><p>"+this.completes_tot[i]+" out of "+this.complete_targs[i]+" complete</p></li>";
-    }
-    bar += "</ul>";
-    return bar;
 }
 
 // getNextDataset: method of TrialGenerator class
