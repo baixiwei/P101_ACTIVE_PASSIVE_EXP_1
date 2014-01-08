@@ -398,33 +398,50 @@ function createTrialSpec( problems, sequence, trial_idx ) {
     var probtxt     = problem.text;
     var category    = sequence.categories[trial_idx];
     var trialtype   = sequence.trialtypes[trial_idx];
-    var data = { "trial_num": trial_idx, "storyidx": probID, "category": category, "trialtype": trialtype };
+    var dataset     = ["placeholder","placeholder"];
+    var q1_key      = "placeholder";
+    var q1_given    = true;
+    var q2_key      = 1;
+    var q2_given    = true;
+    var data = {
+        "trial_num": trial_idx, "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
+        "q1_key": q1_key, "q1_given": Number(q1_given), "q2_key": q2_key, "q2_given": q2_given };
     var text = 
         "<p>This is trial number " + trial_idx + ".</p>" +
         "<p>The story ID is " + probID + " and the actual story text is: '" + probtxt + "'.</p>" +
         "<p>The trial type is " + trialtype + " and the category is " + category + ".</p>";
-    return { "text": text, "data": data };
+    return { "text": text, "q1_key": q1_key, "q1_given": q1_given, "q2_key": q2_key, "q2_given": q2_given, "data": data };
 }
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
 function displayTutorialTrial( display_loc, trial_spec, callback ) {
     // variables to be given values during the trial
-    var response1, response2, correct1, correct2, errors=0;
-    var start_time=new Date(), time_submit, time_complete;
+    var q1_response, q1_correct, q2_response, q2_correct, correct, errors=0;
+    var start_time=new Date(), rt, time_complete;
     // function to run when the trial is complete
     var returnResult = function() {
         display_loc.html('');
-        time_complete   = ( new Date().getTime() - start_time.getTime() )/1000;
+        time_complete   = ( new Date().getTime() - start_time.getTime() );
         var end_time    = new Date();
         var data        = $.extend( {}, trial_spec.data,
-            { "response1": response1, "response2": response2, "correct1": correct1, "correct2": correct2, "errors": errors,
-              "start": start_time.toString(), "end": end_time.toString(), "time_submit": time_submit, "time_complete": time_complete } );
+            { "q1_response": q1_response, "q1_correct": Number(q1_correct),
+              "q2_response": q2_response, "q2_correct": Number(q2_correct),
+              "correct": Number(correct), "errors": errors,
+              "start": start_time.toString(), "end": end_time.toString(),
+              "rt": rt, "time_complete": time_complete } );
         callback( data );
     }
     // display trial content (TBD, this is just a placeholder)
     display_loc.html( trial_spec.text + "<button type='button' id='submit'>Submit</button>" );
     $('#submit').click( returnResult );
     window.scrollTo(0,0);
+    // for testing, assign values to all the vars that should get values during trial
+    q1_response = "placeholder";
+    q1_correct  = q1_response==trial_spec.q1_key;
+    q2_response = 5.9;
+    q2_correct  = q2_response==trial_spec.q2_key;
+    correct     = q1_correct && q2_correct;
+    rt          = new Date().getTime() - start_time.getTime();
 }
 
 
