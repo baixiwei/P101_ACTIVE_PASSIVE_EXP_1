@@ -198,8 +198,9 @@ function doTraining() {
                 // data can be accessed by name, i.e. trial_data[0].correct will indicate whether the first trial was correct or not.
                 var trial_data      = JSON.parse(data);
                 var trial_idx       = (trial_data==undefined) ? 0 : trial_data.length;
+                var prev_dataset    = (trial_data==undefined) ? undefined : trial_data[trial_data.length-1]['dataset'].split(',').map( Number );
                 console.log( "doTraining(): Successfully restored tutorial progress with trial_idx " + trial_idx + "." );
-                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, callback );
+                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, prev_dataset, callback );
                 // TBD: pass in some info that indicates if there was a recovery here?
             },
             error: function(){
@@ -360,15 +361,16 @@ function doSlideshow( display_loc, content_array, callback ) {
 //////////////////////////////////////////////////////////////////////
 
 // do tutorial trials until you've run through all the trials specified in sequence, then call callback
-function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx, callback ) {
+function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx, prev_dataset, callback ) {
     var endTrial = function( data ) {
         // save data, then increment idx and either call the callback or do another iteration
         var trial_data = $.extend( {}, prepend_data, data );
+        var new_dataset = trial_data['dataset'].split(',').map( Number );
         var action;
         if ( (trial_idx+1)<sequence.probIDs.length ) {
             action = function(d) {
                 console.log(d);
-                doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx+1, callback );
+                doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx+1, new_dataset, callback );
             }
         } else {
             action = function(d) {
@@ -385,7 +387,7 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
             error: action
             } );
     }
-    var trial_spec = createTrialSpec( problems, sequence, trial_idx );
+    var trial_spec = createTrialSpec( problems, sequence, trial_idx, prev_dataset );
     displayTutorialTrial( display_loc, trial_spec, endTrial );
 }
 
