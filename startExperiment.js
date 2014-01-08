@@ -414,11 +414,12 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     text            += "<p>The trial type is " + trialtype + ".</p>";                       // testing only
     text            += "<p>" + q1_text + " (solution would " + ["not be given","be given"][Number(q1_given)] + ").</p>";
     text            += "<p>" + q2_text + " (solution would " + ["not be given","be given"][Number(q2_given)] + ").</p>";
-    /* TBD: feedback for incorrect answers */
+    var feedback_fn = function(corrects,num_errors) {                                       // function used during trial to generate feedback
+        getFeedback( category, trialtype, dataset, givens, responses, num_errors ); };
     var data = {
         "trial_num": trial_idx, "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
         "q1_key": q1_key, "q1_given": Number(q1_given), "q2_key": q2_key, "q2_given": Number(q2_given) };
-    return { "text": text, "q1_text": q1_text, "q1_key": q1_key, "q1_given": q1_given, "q2_text": q2_text, "q2_key": q2_key, "q2_given": q2_given, "data": data };
+    return { "text": text, "q1_text": q1_text, "q1_key": q1_key, "q1_given": q1_given, "q2_text": q2_text, "q2_key": q2_key, "q2_given": q2_given, "feedback_fn": feedback_fn, "data": data };
 }
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
@@ -544,7 +545,7 @@ function getStepPrompt( category, step ) {
 
 // TBD: generate answer keys for solution steps 1 and 2 for each category
 function getStepKey( dataset, category, step ) {
-    return [ "Placeholder", getCentTend( dataset, category ) ][ step ];
+    return [ "Placeholder", getCentTend( dataset, category ) ][ step-1 ];
 }
 
 // determine which solution steps are to be presented already solved
@@ -569,26 +570,81 @@ function getCentTend( dataset, measure ) {
     }
 }
 
-
-//////////////////////////////////////////////////////////////////////
-// helper classes and functions for training:
-// iterateTrialGenerator
-// TrialSpec class, doTrial
-// TrialGenerator class, getNextTrial, other methods of TrialGenerator
-//////////////////////////////////////////////////////////////////////
-
-// TrialSpec class
-TrialSpec = function( category, question, answer, feedback, options, data ) {
-    this.category   = category;
-    this.question   = question;
-    this.answer     = answer;
-    this.feedback   = feedback;
-    this.options    = options;
-    this.data       = data;
-    this.doTrial    = doTrial;
+// TBD: determine generate feedback to responses given by user during tutorial trial
+// category, trialtype, dataset, and givens are plugged in when the trial starts
+// corrects (array giving correctness of responses to all solution step prompts) and num_errors (how many incorrect submissions so far) are passed in during the trial
+function getFeedback( category, trialtype, dataset, givens, corrects, num_errors ) {
+    var feedback;
+    if ( trialtype=="Passive" ) {
+        // no feedback given for passive trials
+        feedback = false;
+    } else if ( corrects.indexOf( false )==-1 ) {
+        // no incorrect responses, so give correct feedback
+        feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct!</p>";
+    } else if ( num_errors<=1 ) {
+        // this is the first error, so they'll have to do it again
+        // what follows is a placeholder, real content TBD
+        // it's possible that in Intermediate cases where the SECOND solution step is given, it will be incorrect if calculated based on an incorrect first step response
+        // in that case you might wish NOT to give error feedback for the second step
+        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
+        if ( !corrects[0] ) {
+            feedback += {
+                "Mean": "<p>Your answer to step 1 is not the correct sum of the numbers.</p>",
+                "Median": "<p>Your answer to step 1 is not the correct re-arrangement of the numbers from lowest to highest.</p>",
+                "Mode": "<p>Your answer to step 1 is not the correct re-arrangement of the numbers from lowest to highest.</p>"
+                }[category];
+        }
+        if ( !corrects[1] ) {
+            feedback += {
+                "Mean": "<p>Your answer to step 2 is not the correct result of dividing the sum by the number of numbers.</p>",
+                "Median": "<p>Your answer to step 1 is not the number that is in the middle once the numbers are arranged from lowest to highest.</p>",
+                "Mode": "<p>Your answer to step 1 is not the number that appears most often once the numbers are re-arranged.</p>"
+                }[category];
+        }
+        feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p>";
+    } else {
+        // this is the second error, so the correct answers will be filled in for them
+        // current feedback is a placeholder
+        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p><p>";
+        if ( (!corrects[0])&&(!corrects[1]) ) {
+            feedback += "Your answers to steps 1 and 2 are ";
+        } else if ( !corrects[0] ) {
+            feedback += "Your answer to step 1 is ";
+        } else if ( !corrects[1] ) {
+            feedback += "Your answer to step 2 is ";
+        }
+        feedback += "still incorrect.</p><p>The correct answer has been filled in for you - please take a moment to read it. The 'Continue' button will reactive after a few moments.</p>";
+    }
+    return feedback;
 }
 
-// doTrial: method of TrialSpec class
+/* // Old feedback function retained temporarily for reference.
+function getFeedback( dataset, measure ) {
+    var correct = "<p><img src='small-green-check-mark-th.png'>  " + " Yes, that's correct!</p>";
+    var incorr  = "<p><img src='small-red-x-mark-th.png'>  " + " Oops, that's not correct.</p>";
+    switch ( measure ) {
+        case "Mean":
+            var s = getSum(dataset);
+            var l = dataset.length;
+            incorr += "<p>The sum of the numbers is " + s + " and there are " + l + " numbers. So the Mean is " + s + "/" + l + "=" + getCentTend( dataset, measure ) + ".</p>";
+            break;
+        case "Median":
+            var sorted = getSorted(dataset);
+            incorr += "<p>If you put the numbers in order, you get " + sorted.toString() + ". Then the Median is just the middle number, which is " + getCentTend( dataset, measure ) + ".</p>";
+            break;
+        case "Mode":
+            var sorted = getSorted(dataset);
+            var m = getCentTend( dataset, measure );
+            incorr += "<p>If you put the numbers in order, you get " + sorted.toString() + ". You can see that " + m + " appears " + getFrequency(m,dataset) + " times, more often than any other number. So the Mode is " + m + ".</p>";
+            break;
+    }
+    incorr += "<p>(The continue buttons will appear after several seconds.)</p>";
+    return { false: incorr, true: correct };
+}
+*/
+
+
+// doTrial: method of TrialSpec class, retained temporarily for reference
 //  display this.text and this.question in display_loc, plus an area for text entry and a button
 //  button is disabled until something is entered into the text entry area
 //  when button is clicked, disappear it, display feedback and buttons based on this.options
@@ -675,161 +731,6 @@ function doTrial( display_loc, callback ) {
     // record start time
     var start_time = new Date();
     window.scrollTo(0,0);
-}
-
-function getCompleteTargs( pretest_questions, posttest_questions, training_questions, training_sequence ) {
-    if ( condition==SELF_REGULATED ) {
-        return( [ 5, 5, 5 ] );
-    } else if ( ( condition==BLOCKED ) || ( condition==RANDOM ) ) {
-        return( yoking_info.complete_targs );
-    } else if ( condition==INTERLEAVED ) {
-        var targs = [ 0, 0, 0 ]
-        for ( var i=0; i<yoking_info.tot_targ; i++ ) {
-            targs[ i%3 ] += 1;
-        }
-        return( targs );
-    }
-}
-
-// getNextTrial(): method of TrialGenerator class
-//  given the option selected by user on previous trial, or "first trial" if there is no previous trial,
-//  generate TrialSpec object for the next trial
-function getNextTrial( option_text, iter_num ) {
-
-    // determine trial params: category index, story index, and relation of new dataset to previous dataset
-    // also, record category and data of previous trial for future reference
-    var data_rel;
-    var prev_cat;
-    var prev_dataset;
-    if ( option_text=="first trial" ) {
-        prev_cat        = "NA (first trial)";
-        prev_dataset    = "NA (first trial)";
-        this.cat_idx    = 0;
-        this.story_idx  = 0;
-        data_rel        = "random";
-    } else if ( option_text.indexOf( "recovery" ) != -1 ) {
-        prev_cat        = "NA (recovery)";
-        prev_dataset    = "NA (recovery)";
-        this.cat_idx    = indexInArray( extractCategoryFromOptionText( option_text ), this.categories );
-        this.story_idx  = 0;
-        data_rel        = "random";
-    } else {
-        prev_cat     = this.categories[this.cat_idx];
-        prev_dataset = this.dataset;
-        for ( var i=0; i<this.categories.length; i++ ) {
-            if ( this.categories[i]==extractCategoryFromOptionText( option_text ) ) {
-                this.cat_idx = i;
-            }
-        }
-        data_rel = extractRelationFromOptionText( option_text );
-        if ( data_rel=="random" ) {
-            // in this case, we are starting a new story problem, so increment the story index
-            // this is a hack - it relies on knowledge that the data relation is random iff we start a new story problem
-            this.story_idx = (this.story_idx + 1)%(this.stories.length);
-        }
-    }
-        
-    // generate actual HTML content to be shown to participant, except option buttons (see below)
-    var progbar     = this.getProgressBar();
-    var story       = this.stories[this.story_idx];
-    var cat         = this.categories[this.cat_idx];
-    var storytxt    = "<p>" + story.text + "</p>";
-    var datatxt     = this.getNextDataset(data_rel,story.min,story.max);
-    if ( cat=="Mean" ) {
-        var questxt = "<p>Find the <em>Mean</em> of the " + story.ques + ". (Round off decimals to two decimal places.)</p>";
-    } else {
-        var questxt     = "<p>Find the <em>" + cat + "</em> of the " + story.ques + ".</p>";
-    }
-    var reminder = "";
-    if ( data_rel=="identical" ) {
-        reminder = "<p>(Remember, the <em>" + prev_cat + "</em> of this data was " + getCentTend(prev_dataset,prev_cat) + ".)</p>";
-    } else if ( data_rel=="modified" ) {
-        reminder = "<p>(Remember, the " + prev_cat + " of the previous data was " + getCentTend(prev_dataset,prev_cat) + ".)</p>";
-    }
-    var content     = "<div id='progressbar'><h3>Your Progress</h3>" + progbar + "</div><div id='question_text'>" + storytxt + datatxt + questxt + reminder;
-    var answer      = getCentTend(this.dataset,cat);
-    var feedback    = getFeedback(this.dataset,cat);
-    
-    // modify the record of cats completed total and since last change of story or data set
-    if ( (data_rel=="modified") || (data_rel=="random") ) {
-        // in either of these cases, we are changing data set,
-        // so set the completes since last change to 0 for everything but the current category and 1 for the current category
-        for ( var i=0; i<this.categories.length; i++ ) {
-            if ( i==this.cat_idx ) {
-                this.completes_tot[i]++;
-                this.completes_rct[i]=1;
-            } else {
-                this.completes_rct[i]=0;
-            }
-        }
-    } else {
-        // in this case, we are not changing story or data set,
-        // so increment the completes since last change for the current category and leave others unchanged
-        for ( var i=0; i<this.categories.length; i++ ) {
-            if ( i==this.cat_idx ) {
-                this.completes_tot[i]++;
-                this.completes_rct[i]++;
-            }
-        }
-    }
-            
-    // option buttons are generated AFTER updating the above info, so that they will reflect the current trial
-    // i.e. quit will be available if the current trial will complete the necessary minimums for the categories,
-    // and the options will say same story or different story, etc., according to what it should be after this trial is completed
-    var options     = this.getOptionsText( this.cat_idx, iter_num );
-    
-    // generate data to be recorded (as opposed to above "dataset" which is what is displayed to participant) and return trial specification
-    // once we have more realistic content, we should add more detailed data, e.g. the actual correct answer.
-    var data        = {
-        "prev_category": prev_cat, "prev_dataset": prev_dataset.toString(),
-        "prev_option_text": option_text, "prev_relation": extractRelationFromOptionText( option_text ),
-        "storyidx": this.stories[this.story_idx].prbID, "category": cat, "dataset": this.dataset.toString(), "answerkey": answer
-    };
-    return new TrialSpec( cat, content, answer, feedback, options, data );
-}
-
-// getNextDataset: method of TrialGenerator class
-//  generates a new data set, records it in the TrialGenerator's dataset property, and returns an HTML text version thereof
-//  if relation is random, new data is completely random within constraints of current value of this.story
-//  if relation is identical, new data is same as old data
-//  if relation is related, new data is a tweak of old data with changes highlighted in the HTML
-function getNextDataset( relation, min, max ) {
-    if ( relation=="random" ) {
-        var dataset = generateNewDataset( min, max );
-        var result  = stringifyNewDataset( dataset );
-    } else if ( relation=="identical" ) {
-        var dataset = this.dataset;
-        var result  = stringifyNewDataset( dataset );
-    } else if ( relation=="modified" ) {
-        var old_dataset = this.dataset.slice(0,this.dataset.length);
-        var dataset     = generateModifiedDataset( old_dataset, min, max );
-        var result      = stringifyModifiedDataset( dataset, old_dataset );
-    }
-    this.dataset = dataset;
-    return result;
-}
-
-function getFeedback( dataset, measure ) {
-    var correct = "<p><img src='small-green-check-mark-th.png'>  " + " Yes, that's correct!</p>";
-    var incorr  = "<p><img src='small-red-x-mark-th.png'>  " + " Oops, that's not correct.</p>";
-    switch ( measure ) {
-        case "Mean":
-            var s = getSum(dataset);
-            var l = dataset.length;
-            incorr += "<p>The sum of the numbers is " + s + " and there are " + l + " numbers. So the Mean is " + s + "/" + l + "=" + getCentTend( dataset, measure ) + ".</p>";
-            break;
-        case "Median":
-            var sorted = getSorted(dataset);
-            incorr += "<p>If you put the numbers in order, you get " + sorted.toString() + ". Then the Median is just the middle number, which is " + getCentTend( dataset, measure ) + ".</p>";
-            break;
-        case "Mode":
-            var sorted = getSorted(dataset);
-            var m = getCentTend( dataset, measure );
-            incorr += "<p>If you put the numbers in order, you get " + sorted.toString() + ". You can see that " + m + " appears " + getFrequency(m,dataset) + " times, more often than any other number. So the Mode is " + m + ".</p>";
-            break;
-    }
-    incorr += "<p>(The continue buttons will appear after several seconds.)</p>";
-    return { false: incorr, true: correct };
 }
 
 

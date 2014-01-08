@@ -132,7 +132,6 @@ function assignCondition() {
 <title>Mean, Median, and Mode Tutorial</title>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
 <script src="startExperiment.js" type="text/javascript"></script>
-<script src="jquery-csv.js"></script>
 <link rel="stylesheet" type="text/css" href="styles.css" />
 <link rel="icon" type="image/x-icon" href="favicon.ico" />
 </head>
