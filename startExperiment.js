@@ -35,6 +35,7 @@ function startExperiment( display_loc, prepend_data, pretest_questions, posttest
 		{
 			var progress = JSON.parse(data);
 			// progress.training = skip_training;   // for debug purposes
+            progress.instructions = true;           // for development only, delete before going live
 			startExperiment_skip = progress;
 			
 			doIntroduction();
@@ -42,6 +43,7 @@ function startExperiment( display_loc, prepend_data, pretest_questions, posttest
 		error: function()
 		{
 			var progress = { "introduction": false, "pretest": false, "instructions": false, "training": false, "posttest": false };
+            progress.instructions = true;           // for development only, delete before going live
 			startExperiment_skip = progress;
 			
 			doIntroduction();
@@ -105,6 +107,7 @@ function doPretest() {
 }
 
 // doInstructions: and then run the training
+// TBD
 function doInstructions() {
     var callback = function() {
 		// update subject progress in database
@@ -118,6 +121,7 @@ function doInstructions() {
 		// next section
         doTraining();
     };
+    /*
     var instructions = [
         "<h1>Instruction Section</h1><p>This section of the tutorial will explain to you more about the concepts of mean, median, and mode.</p>", "<h2>Mean</h2><p>The <strong>mean</strong> is the same as the <strong>average</strong>. To find the mean of a set of numbers, divide their sum by how many numbers there are.</p><p>For example, if the numbers are [ 10, 8, 8, 4, 5, 6, 8 ], then their sum is 49, and there are 7 numbers. So the mean is 49/7=7.</p>",
         "<h2>Median</h2><p>The <strong>median</strong> of a set of numbers is the number that is in the middle when the numbers are put in order.</p><p>To find the median, put them in order and then look to see which number is in the middle.</p><p>For example, if the numbers are [ 10, 8, 8, 4, 5, 6, 8 ], when you put them in order you get [ 4, 5, 6, 8, 8, 8, 10 ]. The number in the middle is 8, so the median is 8.</p><p>(Don't worry about situations when there's an even quantity of numbers-- we won't have any of those in this tutorial.)</p>",
@@ -156,6 +160,7 @@ function doInstructions() {
             "<p>You will have to complete at least " + complete_targs[0] + " examples of mean, " + complete_targs[1] + " of median, and " + complete_targs[2] + " of mode, for " + getSum(complete_targs) + " total. At the top of the page, you'll see a table like this:</p><p>"+progbar+"</p><p>This will tell you how many problems you have finished already for each type. Once you've finished this minimum number, a 'Quit' button will appear which you can use to end the tutorial.</p><p>OK, that's all! Click below to get started!"
         ] );
     }
+    */
     if ( startExperiment_skip.instructions ) 
 	{ 
 		doTraining();
@@ -189,44 +194,20 @@ function doTraining() {
             url: 'restore_progress.php',
             data: {"subjid": prepend_data.subjid},
             success: function(data) {
-                // TBD: revise according to the info needed by the revised trial generator class
-                
                 // trial_data will contain an array with each element representing the trial
                 // data can be accessed by name, i.e. trial_data[0].correct will indicate whether the first trial was correct or not.
-                var trial_data = JSON.parse(data);
-                if ( trial_data != undefined ) {
-                    // figure out how many trials were completed in each category and which category was requested next
-                    var progress_by_category = { "Mean": 0, "Median": 0, "Mode": 0 };
-                    for ( var i=0; i<trial_data.length; i++ ) {
-                        if ( trial_data[i].category!=undefined ) {
-                            progress_by_category[ trial_data[i].category ] += 1;
-                        }
-                    }
-                    var next_category;
-                    if ( trial_data[ trial_data.length-1 ].option_category==undefined ) {
-                        next_category = [ "Mean", "Median", "Mode" ][ Math.floor( Math.random()*3 ) ];
-                    } else if ( indexInArray( trial_data[ trial_data.length-1 ].option_category, [ "Mean", "Median", "Mode" ] )!=-1 ) {
-                        next_category = trial_data[ trial_data.length-1 ].option_category;
-                    } else {
-                        next_category = [ "Mean", "Median", "Mode" ][ Math.floor( Math.random()*3 ) ];
-                    }
-                    // create a trial generator using the progress information
-                    var trial_generator = new TrialGenerator( startExperiment_training_questions, progress_by_category, pretest_questions, posttest_questions, training_questions, training_sequence );
-                    var iter_num    = trial_data.length;
-                    var option_text = "recovery: " + next_category;
-                    iterateTrialGenerator( display_loc, prepend_data, trial_generator, iter_num, option_text, trial_data, callback );
-                } else {
-                    // this likely means that they did not complete any trials, and therefore should start from scratch.
-                    // we do that by just creating a trial generator without previous progress information
-                    var trial_generator = new TrialGenerator( startExperiment_training_questions, { "Mean": 0, "Median": 0, "Mode": 0 }, pretest_questions, posttest_questions, training_questions, training_sequence );
-                    iterateTrialGenerator( display_loc, prepend_data, trial_generator, 0, "first trial", [], callback );
-                }
+                var trial_data      = JSON.parse(data);
+                var trial_idx       = (trial_data==undefined) ? 0 : trial_data.length;
+                console.log( "doTraining(): Successfully restored tutorial progress with trial_idx " + trial_idx + "." );
+                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, callback );
+                // TBD: pass in some info that indicates if there was a recovery here?
             },
             error: function(){
                 // this likely means that they did not complete any trials, and therefore should start from scratch.
                 // we do that by just creating a trial generator without previous progress information
-                var trial_generator = new TrialGenerator( startExperiment_training_questions, { "Mean": 0, "Median": 0, "Mode": 0 }, pretest_questions, posttest_questions, training_questions, training_sequence );
-                iterateTrialGenerator( display_loc, prepend_data, trial_generator, 0, "first trial", [], callback );
+                console.log( "doTraining(): failed to recover tutorial progress." );
+                var trial_idx       = 0;
+                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, callback );
             }
         });
     }
@@ -272,7 +253,7 @@ function endExperiment() {
 
 
 //////////////////////////////////////////////////////////////////////
-// helper functions for pretest and instructions
+// helper functions for pretest, posttest, and instructions
 // doRadioSurvey, doRadioQuestion, doSlideshow
 //////////////////////////////////////////////////////////////////////
 
@@ -370,6 +351,73 @@ function doSlideshow( display_loc, content_array, callback ) {
         $("#continue_button").focus();
         window.scrollTo(0,0);
     }
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// helper functions for tutorial
+// doTutorialTrial, createTrialSpec, displayTutorialTrial
+//////////////////////////////////////////////////////////////////////
+
+function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx, callback ) {
+    var endTrial = function( data ) {
+        // save data, then increment idx and either call the callback or do another iteration
+        // TBD, below is a placeholder
+        var trial_data = $.extend( {}, prepend_data, data );
+        console.log( "Trial " + trial_idx + " completed, submitting data." );
+        if ( trial_idx<sequence.probIDs.length ) {
+            doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx+1, callback );
+        } else {
+            callback();
+        }
+    }
+    var trial_spec = createTrialSpec( problems, sequence, trial_idx );
+    displayTutorialTrial( display_loc, trial_spec, endTrial );
+}
+
+// create all the content needed to display the trial and return it as an associative array
+function createTrialSpec( problems, sequence, trial_idx ) {
+    /*  TBD, what's below is a placeholder. Eventually we'll need at least:
+        text of question
+        data set
+        text of first and second prompts
+        correct answer for first and second prompts
+        progress bar info
+        which if any of prompts should have answer displayed
+        feedback to give in event of incorrect answers
+    */
+    var probID      = sequence.probIDs[trial_idx];
+    var problem     = problems.filter( function(prob) { return prob.prbID==probID; } )[0];
+    var probtxt     = problem.text;
+    var category    = sequence.categories[trial_idx];
+    var trialtype   = sequence.trialtypes[trial_idx];
+    var data = { "trial_num": trial_idx, "storyidx": probID, "category": category, "trialtype": trialtype };
+    var text = 
+        "<p>This is trial number " + trial_idx + ".</p>" +
+        "<p>The story ID is " + probID + " and the actual story text is: '" + probtxt + "'.</p>" +
+        "<p>The trial type is " + trialtype + " and the category is " + category + ".</p>";
+    return { "text": text, "data": data };
+}
+
+// display the trial in the given location using the given specs and call callback on trial data once complete
+function displayTutorialTrial( display_loc, trial_spec, callback ) {
+    // variables to be given values during the trial
+    var response1, response2, correct1, correct2, errors=0;
+    var start_time=new Date(), time_submit, time_complete;
+    // function to run when the trial is complete
+    var returnResult = function() {
+        display_loc.html('');
+        time_complete   = ( new Date().getTime() - start_time.getTime() )/1000;
+        var end_time    = new Date();
+        var data        = $.extend( {}, trial_spec.data,
+            { "response1": response1, "response2": response2, "correct1": correct1, "correct2": correct2, "errors": errors,
+              "start": start_time.toString(), "end": end_time.toString(), "time_submit": time_submit, "time_complete": time_complete } );
+        callback( data );
+    }
+    // display trial content (TBD, this is just a placeholder)
+    display_loc.html( trial_spec.text + "<button type='button' id='submit'>Submit</button>" );
+    $('#submit').click( returnResult );
+    window.scrollTo(0,0);
 }
 
 
