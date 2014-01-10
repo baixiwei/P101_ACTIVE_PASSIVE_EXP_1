@@ -314,7 +314,7 @@ function generate_content(new_user) {
         {prbID: 21, text: "The number of exercises completed by each student preparing for an algebra exam is shown below.", ques:"number of exercises completed", min:2, max:32},
         {prbID: 22, text: "The weight for each of several cereal brands sold in a store is shown below, in grams.", ques: "weight of cereal boxes", min:200, max:650},
         {prbID: 23, text: "Below are the mean temperatures in a series of days in a city.", ques:"temperature in the city", min:30, max:70},
-        {prbID: 24, text: "The price of a commodity in 10 different cities is given below.", ques: "price of the commodity", min:100, max:200},
+        {prbID: 24, text: "The price of a commodity in several different cities is given below.", ques: "price of the commodity", min:100, max:200},
         {prbID: 25, text: "The height of the players of a team is shown below, in inches.", ques:"height of the players", min:70, max:90},
         {prbID: 26, text: "The total number of bikes sold in the past few days in a shop is shown below.", ques:"number of bikes sold", min:0, max:20},
         {prbID: 27, text: "The sizes of the bicycles owned by the students in a class are listed below, in inches.", ques: "size of the bicycles", min:20, max:40},
