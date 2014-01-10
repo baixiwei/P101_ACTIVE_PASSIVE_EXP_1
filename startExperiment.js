@@ -169,7 +169,7 @@ function doInstructions() {
 	}
 }
 
-// doTraining: and then go to background demographics
+// doTraining: and then go to posttest
 function doTraining() {
     // callback is called at the end of training
     var callback = function( data ) {
@@ -182,11 +182,11 @@ function doTraining() {
 		});
 	
            // display_loc.html( JSON.stringify( data ) );
-        doDemographics(); // TBD: should be doPosttest();
+        doPosttest();
     };
 	// check to see if there is any progress
     if ( startExperiment_skip.training ) {
-        doDemographics(); // TBD: should be doPosttest();
+        doPosttest();
     } else {
         $.ajax({
             type: 'post',
@@ -214,6 +214,38 @@ function doTraining() {
     }
 }
 
+// doPosttest: then go to background demographics
+// doPretest: and then show training instructions
+function doPosttest() {
+    var callback = function() {
+		// update subject progress in database
+		$.ajax({
+			type: 'post',
+			cache: false,
+			url: 'update_progress.php',
+			data: {"sid": prepend_data.subjid , "flag": "posttest"}
+		});
+		
+		// next section
+        doDemographics();
+    };
+    if ( startExperiment_skip.posttest ) {
+        var questions = []; 
+    } else {
+        var questions = startExperiment_posttest_questions;
+    }
+	
+	// if we are skipping this because someone has already done it,
+	// then we do not want to write a redundant flag to the database
+	if ( questions.length > 0 ) {
+        var intro = [ "<h1>Test Section</h1><p>Great job! You're done with the practice section, and you're almost done with the whole tutorial!</p><p>In this section, you will take another short multiple choice test about mean, median, and mode. The test questions are similar to questions that will appear on your midterm exam, so they are good practice for the midterm. Just like before, please don\'t use any outside sources, or a calculator, for this part.</p>" ];
+        var test = function() { doRadioSurvey( questions, "posttesttdata", startExperiment_display_loc, startExperiment_prepend_data, callback ); };
+		doSlideshow( startExperiment_display_loc, intro, test );
+	} else {
+		doDemographics();
+	}
+}
+
 // doDemographics: and then end the experiment
 function doDemographics() {
     var callback = function() {
@@ -221,7 +253,7 @@ function doDemographics() {
     }
     var questions = [
         { "number": 0,
-          "text": "<h1>Background Questions</h1><p>Congratulations! You're done with the tutorial. Finally, could you take a minute to answer a few questions about yourself?</p><p>This will just take a minute - honest!</p>" },
+          "text": "<h1>Background Questions</h1><p>Congratulations! You're done with the tutorial! Finally, could you take a minute to answer a few questions about yourself?</p><p>This will just take a minute - honest!</p>" },
         { "number": 1,
           "text": "<p>Are you male or female?</p>",
           "answers": [ "Male", "Female" ] },

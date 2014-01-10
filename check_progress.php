@@ -16,6 +16,7 @@ if($result) {
 	$skip_arr['pretest'] = ($arr['pretest'] == 1);
 	$skip_arr['instructions'] = ($arr['instructions'] == 1);
 	$skip_arr['training'] = ($arr['training'] == 1);
+	$skip_arr['posttest'] = ($arr['posttest'] == 1);
 
 	echo json_encode($skip_arr);
 } 

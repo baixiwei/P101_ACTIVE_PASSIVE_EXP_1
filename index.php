@@ -254,32 +254,42 @@ function recover_sequence(){
 // generate content for pretest, tutorial, and posttest
 var pretest_questions, posttest_questions, training_questions;
 function generate_content(new_user) {
-
-    // pretest questions
     pretest_questions = [
         { "number": 1,
           "text": "1.  Five pizzas were given quality scores by an expert taster.  Their scores were: Pizza World = 8, Slices! = 3, Pisa Pizza = 2, Pizza a go-go = 4, Crusty's = 8. What are the mode, median and mean for this data set?",
           "answers": [ "A) mode = 8, median = 5, mean = 4", "B) mode = 5, median = 8, mean = 4", "C) mode = 8, median = 4, mean = 5", "D) mode = 5, median = 4, mean = 8" ],
           "correct_response": 2 },
         { "number": 2,
-          "text": "2.  Imagine a vocabulary test in which 15 students do very well, getting scores of 98, 99, and 100 out of 100 possible points.  However, the remaining 3 students get very poor scores: 5, 8, and 9.  Will the mode be less than or more than the mean?",
+          "text": "2.  Imagine an easy vocabulary test on which 17 students do very well, each getting a score of 98, 99, or 100 out of 100 possible points.  However, the remaining 3 students get very poor scores: 2, 3, and 5.  Will the mode be less than or more than the mean?",
           "answers": [ "A) the mode will be less than the mean", "B) the mode will be more than the mean", "C) the mode and mean will be the same", "D) more information is needed about the particular scores" ],
           "correct_response": 1 },
         { "number": 3,
-          "text": "3.  There are 7 players on a particular basketball team.  On a particular game, the median number of points scored by each player was 12 and no two players scored the same number of points.  If the lowest and highest scoring players are not considered, what will be the median of the remaining 5 players' scores?",
-          "answers": [ "A) more information is needed about the particular scores", "B) 8", "C) 10", "D) 12" ],
+          "text": "3.  There are 7 players on a particular basketball team.  On a particular game, the median number of points scored by each player was 12 and no two players scored the same number of points.  If the lowest and highest scoring players are not considered, what will be the median of the remaining 5 players\' scores?",
+          "answers": [ "A) more information is needed about the particular scores", "B) 7", "C) 10", "D) 12" ],
           "correct_response": 3 },
         { "number": 4,
-          "text": "4.  Three children in a family have shoe sizes of 5, 10, and 9.  What are mean and median for the shoes sizes in this family?",
+          "text": "4.  Three children in a family have shoe sizes of 5, 10, and 9.  What are mean and median for the shoes sizes of the children in this family?",
           "answers": [ "A) mean = 9, median = 10", "B) mean = 9, median = 9", "C) mean = 8, median = 10", "D) mean = 8, median = 9" ],
           "correct_response": 3 }
         ];
-        
-    // posttest questions
     posttest_questions = [
-        ]; // TBD
-
-    // training questions
+        { "number": 1,
+          "text": "1.  Five students on a dormitory floor were asked how many hours of TV they watched per week.  Their responses were: Ed: 5, Fred: 2, Ned: 1, Zed: 6, and Jed: 6.  What are the mode, median and mean values for this data set?",
+          "answers": [ "A) mode = 4, median = 5, mean = 6", "B) mode = 6, median = 5, mean = 4", "C) mode = 5, median = 4, mean = 6", "D) mode = 5, median = 6, mean = 4" ],
+          "correct_response": 1 },
+        { "number": 2,
+          "text": "2.  15 patients were given a 3-week diet.  13 of the patients lost only 1 or 2 pounds, but the other two patients lost a lot of weight: 27 and 32 pounds.  Will the mode number of pounds lost be less than or more than the mean?",
+          "answers": [ "A) the mode and mean will be the same", "B) the mode will be more than the mean", "C) the mode will be less than the mean", "D) more information is needed about the particular weights lost" ],
+          "correct_response": 2 },
+        { "number": 3,
+          "text": "3.  11 pianists were rated in a competition and each got a rating on a 10-point scale between 3 and 8.  The median rating was 5.  Two new pianists were rated and received scores of 1 and 9.  Including these new pianists, what will be the median for all 13 pianists?",
+          "answers": [ "A) 5", "B) 13", "C) 11", "D) more information is needed about the particular scores" ],
+          "correct_response": 0 },
+        { "number": 4,
+          "text": "4.  Each of three children in a family has pets.  The oldest, middle, and youngest child have 5, 6, and 1 pets, respectively.  What are mean and median number of pets for these children?",
+          "answers": [ "A) mean = 4, median = 6", "B) mean = 6, median = 4", "C) mean = 5, median = 4", "D) mean = 4, median = 5" ],
+          "correct_response": 3 }
+        ];
     training_questions = [
         {prbID: 1, text: "The scores of several students on a 50-point pop quiz are shown below.", ques: "students' test scores", min: 10, max: 50},
         {prbID: 2, text: "The data below shows the numbers of stories of several buildings in a neighborhood.", ques: "number of stories", min: 1, max:50},
