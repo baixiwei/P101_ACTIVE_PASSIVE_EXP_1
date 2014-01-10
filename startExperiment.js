@@ -443,9 +443,6 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var givens      = getStepPromptGivens( trialtype );                                     // determine which solution steps are to be presented already solved
     var q1_given    = givens[0];                                                            // whether answer to first step is given
     var q2_given    = givens[1];                                                            // whether answer to second step is given
-    text            += "<p>The trial type is " + trialtype + ".</p>";                       // testing only
-    text            += "<p>" + q1_text + " (solution would " + ["not be given","be given"][Number(q1_given)] + ").</p>";
-    text            += "<p>" + q2_text + " (solution would " + ["not be given","be given"][Number(q2_given)] + ").</p>";
     var feedback_fn = function(corrects,num_errors) {                                       // function used during trial to generate feedback
         getFeedback( category, trialtype, dataset, givens, responses, num_errors ); };
     var data = {
@@ -472,8 +469,19 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
               "rt": rt, "time_complete": time_complete } );
         callback( data );
     }
-    // display trial content (TBD, this is just a placeholder)
-    display_loc.html( trial_spec.text + "<button type='button' id='submit'>Submit</button>" );
+    // display trial content
+    var content = "";
+    content     += trial_spec.text;
+    content     += "<p>" + trial_spec.q1_text + "</p>";
+    content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q1_given ) ] + ")</p>";    // testing only
+    // solution or space for response
+    content     += "<p>" + trial_spec.q2_text + "</p>";
+    content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q2_given ) ] + ")</p>";    // testing only
+    // solution or space for response
+    content     += "<p><button type='button' id='submit'>Submit</button></p>";
+    // feedback alert or sth
+    // filled-in/disabled for givens
+    display_loc.html( content );
     $('#submit').click( returnResult );
     window.scrollTo(0,0);
     // for testing, assign values to all the vars that should get values during trial
@@ -585,11 +593,6 @@ function getStepPrompt( category, step, plural_noun ) {
     var prompt = prompts[category][step-1];
     return prompt;
 }
-
-solutions:
-Mean: Step1: "The sum is “; step2: “The mean is .”
-Median: Step1: "The ordered sequence of numbers is "; step2: "The middle number is ."
-Mode: Step1: "The ordered sequence of numbers is "; step2: "The number repeated more times is .”
 
 // generate answer keys for solution steps 1 and 2 for each category
 function getStepKey( dataset, category, step ) {
