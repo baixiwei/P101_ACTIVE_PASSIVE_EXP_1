@@ -436,9 +436,9 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var dataset_str = stringifyDataset( dataset );                                          // pretty version of dataset
     var question    = getQuestion( problem, category );                                     // text of the question to be answered
     var text        = progbar + probtxt + dataset_str + question;                           // text block to appear before prompts
-    var q1_text     = getStepPrompt( category, 1 );                                         // text of first solution step prompt
+    var q1_text     = getStepPrompt( category, 1, problem.ques );                           // text of first solution step prompt
     var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
-    var q2_text     = getStepPrompt( category, 2 );                                         // text of second solution step prompt
+    var q2_text     = getStepPrompt( category, 2, problem.ques );                           // text of second solution step prompt
     var q2_key      = getStepKey( dataset, category, 2 );                                   // answer key for second step
     var givens      = getStepPromptGivens( trialtype );                                     // determine which solution steps are to be presented already solved
     var q1_given    = givens[0];                                                            // whether answer to first step is given
@@ -570,14 +570,41 @@ function getQuestion( problem, category ) {
         "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
 }
 
-// TBD: generate prompts for solution steps 1 and 2 for each category
-function getStepPrompt( category, step ) {
-    return "Placeholder for " + category + " solution step " + step;
+// generate prompts for solution steps 1 and 2 for each category
+function getStepPrompt( category, step, plural_noun ) {
+    var prompts = {
+        "Mean": [
+            "Start by adding up all of the " + plural_noun + ". Write their sum here:",
+            "Now divide the sum by the total number of numbers. The result is the Mean. Write it here:" ],
+        "Median": [
+            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here:",
+            "Now find the middle number in the ordered sequence. That number is the Median. Write it here:" ],
+        "Mode": [
+            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here:",
+            "Now find which number is repeated the most often. That number is the Mode. Write it here:" ] };
+    var prompt = prompts[category][step-1];
+    return prompt;
 }
 
-// TBD: generate answer keys for solution steps 1 and 2 for each category
+solutions:
+Mean: Step1: "The sum is “; step2: “The mean is .”
+Median: Step1: "The ordered sequence of numbers is "; step2: "The middle number is ."
+Mode: Step1: "The ordered sequence of numbers is "; step2: "The number repeated more times is .”
+
+// generate answer keys for solution steps 1 and 2 for each category
 function getStepKey( dataset, category, step ) {
-    return [ "Placeholder", getCentTend( dataset, category ) ][ step-1 ];
+    var solutions = {
+        "Mean": [
+            getSum( dataset ),
+            Math.round( getMean( dataset )*100 )/100 ],
+        "Median": [
+            getSorted( dataset ).toString(),
+            getMedian( dataset ) ],
+        "Mode": [
+            getSorted( dataset ).toString(),
+            getMode( dataset ) ] };
+    var solution = solutions[category][step-1];
+    return solution;
 }
 
 // determine which solution steps are to be presented already solved
@@ -587,19 +614,6 @@ function getStepPromptGivens( trialtype ) {
         "Passive":      [true,true],
         "Intermediate": [[false,true],[true,false]][Math.floor(Math.random()*2)]
         }[trialtype];
-}
-
-// determine the mean, median, or mode of a dataset
-function getCentTend( dataset, measure ) {
-    if ( measure=="Mean" ) {
-        var x = getMean( dataset );
-        x = Math.round( x*100 ) / 100;
-        return x;
-    } else if ( measure=="Median" ) {
-        return getMedian( dataset );
-    } else if ( measure=="Mode" ) {
-        return getMode( dataset );
-    }
 }
 
 // TBD: determine generate feedback to responses given by user during tutorial trial
