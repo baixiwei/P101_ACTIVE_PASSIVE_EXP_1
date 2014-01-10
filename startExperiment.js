@@ -469,28 +469,36 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
               "rt": rt, "time_complete": time_complete } );
         callback( data );
     }
+    var processInput = function() {
+        rt          = (rt==undefined) ? new Date().getTime() - start_time.getTime() : rt;
+        q1_response = $('#q1_response').val();
+        q1_correct  = q1_response==trial_spec.q1_key;
+        q2_response = $('#q2_response').val();
+        q2_correct  = q2_response==trial_spec.q2_key;
+        correct     = q1_correct && q2_correct;
+        returnResult();
+        // TBD: response parsing
+        // TBD: more forgiving for float equality?
+        // TBD: save q2 response as number?
+        // TBD: feedback alert or sth
+        // TBD: keep track of errors
+        // TBD: reading responses sensitive to whether given or not
+    }
     // display trial content
     var content = "";
     content     += trial_spec.text;
     content     += "<p>" + trial_spec.q1_text + "</p>";
     content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q1_given ) ] + ")</p>";    // testing only
-    // solution or space for response
+    content     += "<p><input type='text' id='q1_response' size='60'></p>";
     content     += "<p>" + trial_spec.q2_text + "</p>";
     content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q2_given ) ] + ")</p>";    // testing only
-    // solution or space for response
+    content     += "<p><input type='text' id='q2_response' size='60'></p>";
     content     += "<p><button type='button' id='submit'>Submit</button></p>";
-    // feedback alert or sth
-    // filled-in/disabled for givens
+    // TBD: visual cues to distinguish question from prompts
+    // TBD: filled-in/disabled for givens - and, will need to revise text of prompts in those cases
     display_loc.html( content );
-    $('#submit').click( returnResult );
+    $('#submit').click( processInput );
     window.scrollTo(0,0);
-    // for testing, assign values to all the vars that should get values during trial
-    q1_response = "placeholder";
-    q1_correct  = q1_response==trial_spec.q1_key;
-    q2_response = 5.9;
-    q2_correct  = q2_response==trial_spec.q2_key;
-    correct     = q1_correct && q2_correct;
-    rt          = new Date().getTime() - start_time.getTime();
 }
 
 
@@ -577,6 +585,8 @@ function getQuestion( problem, category ) {
         "<p>Find the <em>Mean</em> of the " + problem.ques + ". (Round off decimals to two decimal places.)</p>" :
         "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
 }
+
+// TBD: specify decimal places required, format details, etc.
 
 // generate prompts for solution steps 1 and 2 for each category
 function getStepPrompt( category, step, plural_noun ) {
