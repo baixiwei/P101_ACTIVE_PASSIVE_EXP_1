@@ -457,6 +457,89 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
     var q1_response, q1_correct, q2_response, q2_correct, correct, errors=0;
     var start_time=new Date(), rt, time_complete;
     // function to run when the trial is complete
+    function processInput() {
+        q1_response = $('#q1_response').val();
+        q2_response = $('#q2_response').val();
+        // validate responses
+        var q1_invalid  = responseInvalid( q1_response, trial_spec.q1_key, 1 );
+        var q2_invalid  = responseInvalid( q2_response, trial_spec.q2_key, 2 );
+        console.log( q1_invalid + " " + q2_invalid );
+        // if either response is invalid, deliver error, otherwise submit data
+        if ( q1_invalid || q2_invalid ) {
+            alert( "Oops!\n\n" +
+                ( q1_invalid ? q1_invalid + "\n\n" : "" ) +
+                ( q2_invalid ? q2_invalid + "\n\n" : "" ) +
+                ( "Please correct your response(s) and click 'Submit' again when you are done." ) );
+        } else {
+            rt          = (rt==undefined) ? new Date().getTime() - start_time.getTime() : rt;
+            q1_correct  = ( responseType(trial_spec.q1_key)=='integer list' ) ?
+                parseAsIntList(q1_response).toString()==trial_spec.q1_key :
+                parseAsSingleNum(q1_response)==trial_spec.q1_key ;
+            q2_correct  = ( responseType(trial_spec.q2_key)=='integer list' ) ?
+                parseAsIntList(q2_response).toString()==trial_spec.q2_key :
+                parseAsSingleNum(q2_response)==trial_spec.q2_key ;
+            correct     = q1_correct && q2_correct;
+            returnResult();
+        }
+        // TBD: response parsing
+        // TBD: more forgiving for float equality?
+        // TBD: save q2 response as number?
+        // TBD: feedback alert or sth
+        // TBD: keep track of errors
+        // TBD: reading responses sensitive to whether given or not
+    }
+    function responseInvalid( response, key, number ) {
+        var invalid = false;
+        if ( response==undefined ) {
+            invalid = "You seem to have left the " + [ "first", "second" ][ number-1 ] + " question blank.";
+        } else if ( response.replace( /\s+/g, '' )=="" ) {
+            invalid = "You seem to have left the " + [ "first", "second" ][ number-1 ] + " question blank.";
+        } else if ( responseType(key)=='integer list' ) {
+            // string key is assumed to be a list of numbers, so response should be interpretable as such, and have length>=1.
+            var arr = parseAsIntList( response );
+            if ( !arr ) {   // could not interpret as a list of integers
+                invalid = "The answer to the " + [ "first", "second" ][ number-1 ] + " question should be a list of numbers separated by commas or spaces.";
+            } else if ( arr.length<2 ) {    // does not contain more than one number
+                invalid = "The answer to the " + [ "first", "second" ][ number-1 ] + " question should be a list of numbers (not just one number).";
+            }
+        } else if ( responseType(key)=='single number' ) {
+            // non-string key should be a single number and nothing else
+            var num = parseAsSingleNum( response );
+            if ( num===false ) {    // could not interpret as a number
+                invalid = "The answer to the " + [ "first", "second" ][ number-1 ] + " question should be a single number (and nothing else).";
+            }
+        }
+        return invalid;
+    }
+    function responseType( key ) {
+        if ( typeof( key )=='string' ) {
+            if ( key.indexOf(',')!=-1 ) {
+                return 'integer list';
+            } else {
+                return 'single number';
+            }
+        } else {
+            return 'single number';
+        }
+    }
+    function parseAsIntList( response ) {
+        var parse = response.match( /[-+]?[0-9]*\.?[0-9]+/g );
+        if ( parse==null ) {
+            return false;
+        } else {
+            return parse;
+        }
+    }
+    function parseAsSingleNum( response ) {
+        var parse = parseAsIntList( response );
+        if ( parse===false ) {
+            return false;
+        } else if ( parse.length>1 ) {
+            return false;
+        } else {
+            return parse[0];
+        }
+    }
     var returnResult = function() {
         display_loc.html('');
         time_complete   = ( new Date().getTime() - start_time.getTime() );
@@ -468,21 +551,6 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
               "start": start_time.toString(), "end": end_time.toString(),
               "rt": rt, "time_complete": time_complete } );
         callback( data );
-    }
-    var processInput = function() {
-        rt          = (rt==undefined) ? new Date().getTime() - start_time.getTime() : rt;
-        q1_response = $('#q1_response').val();
-        q1_correct  = q1_response==trial_spec.q1_key;
-        q2_response = $('#q2_response').val();
-        q2_correct  = q2_response==trial_spec.q2_key;
-        correct     = q1_correct && q2_correct;
-        returnResult();
-        // TBD: response parsing
-        // TBD: more forgiving for float equality?
-        // TBD: save q2 response as number?
-        // TBD: feedback alert or sth
-        // TBD: keep track of errors
-        // TBD: reading responses sensitive to whether given or not
     }
     // display trial content
     var content = "";
