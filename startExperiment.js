@@ -444,7 +444,7 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var q1_given    = givens[0];                                                            // whether answer to first step is given
     var q2_given    = givens[1];                                                            // whether answer to second step is given
     var feedback_fn = function(corrects,num_errors) {                                       // function used during trial to generate feedback
-        getFeedback( category, trialtype, dataset, givens, responses, num_errors ); };
+        return getFeedback( category, trialtype, dataset, givens, corrects, num_errors ); };
     var data = {
         "trial_num": trial_idx, "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
         "q1_key": q1_key, "q1_given": Number(q1_given), "q2_key": q2_key, "q2_given": Number(q2_given) };
@@ -453,40 +453,74 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
 function displayTutorialTrial( display_loc, trial_spec, callback ) {
-    // variables to be given values during the trial
-    var q1_response, q1_correct, q2_response, q2_correct, correct, errors=0;
-    var start_time=new Date(), rt, time_complete;
+    var start_time, trial_data = {};
+    trial_data['errors']    = 0;
+    // var q1_response, q1_correct, q2_response, q2_correct, correct, errors=0;
+    // var start_time=new Date(), rt, time_complete;
     // function to run when the trial is complete
     function processInput() {
-        q1_response = $('#q1_response').val();
-        q2_response = $('#q2_response').val();
+        // record time submitted and read in responses
+        var submit_time = new Date();
+        var q1_response = $('#q1_response').val();
+        var q2_response = $('#q2_response').val();
         // validate responses
         var q1_invalid  = responseInvalid( q1_response, trial_spec.q1_key, 1 );
         var q2_invalid  = responseInvalid( q2_response, trial_spec.q2_key, 2 );
-        console.log( q1_invalid + " " + q2_invalid );
-        // if either response is invalid, deliver error, otherwise submit data
+        // if either response is invalid, deliver an error
         if ( q1_invalid || q2_invalid ) {
             alert( "Oops!\n\n" +
                 ( q1_invalid ? q1_invalid + "\n\n" : "" ) +
                 ( q2_invalid ? q2_invalid + "\n\n" : "" ) +
                 ( "Please correct your response(s) and click 'Submit' again when you are done." ) );
         } else {
-            rt          = (rt==undefined) ? new Date().getTime() - start_time.getTime() : rt;
-            q1_correct  = ( responseType(trial_spec.q1_key)=='integer list' ) ?
-                parseAsIntList(q1_response).toString()==trial_spec.q1_key :
-                parseAsSingleNum(q1_response)==trial_spec.q1_key ;
-            q2_correct  = ( responseType(trial_spec.q2_key)=='integer list' ) ?
-                parseAsIntList(q2_response).toString()==trial_spec.q2_key :
-                parseAsSingleNum(q2_response)==trial_spec.q2_key ;
-            correct     = q1_correct && q2_correct;
-            returnResult();
+            // check correctness of responses; if either response is incorrect, record the error
+            var q1_correct = responseCorrect( q1_response, trial_spec.q1_key );
+            var q2_correct = responseCorrect( q2_response, trial_spec.q2_key );
+            if ( (!q1_correct) || (!q2_correct) ) {
+                trial_data['errors']        += 1;
+            }
+            // if this is the first valid response submitted, record responses and correctness
+            if ( trial_data['rt']==undefined ) {
+                trial_data['rt']            = submit_time.getTime() - trial_data['start'];
+                trial_data['q1_response']   = q1_response;
+                trial_data['q2_response']   = Number(q2_response);
+                trial_data['q1_correct']    = Number(q1_correct);
+                trial_data['q2_correct']    = Number(q2_correct);
+                trial_data['correct']       = Number(q1_correct && q2_correct);
+            }
+            // display feedback after a pause
+            var feedback = trial_spec.feedback_fn( [ q1_correct, q2_correct ], trial_data['errors'] );
+            $('#feedback').html('');
+            setTimeout( function() { $('#feedback').html( feedback ); }, 250 );
+            // decide what to do after displaying feedback
+            if ( q1_correct && q2_correct ) {
+                // if both responses are correct, let them go on
+                $('#submit').unbind( 'click', processInput );
+                $('#submit').click( returnResult );
+                $('#submit').html( 'Continue' );
+            } else if ( trial_data['errors']<=1 ) {
+                // if at least one response is incorrect and this is the first error, make them resubmit
+                $('#submit').attr( 'disabled', 'disabled' );
+                setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 2250 );
+            } else {
+                // if at least one response is incorrect and this is the 2nd+ error, let them proceed after a delay
+                $('#submit').unbind( 'click', processInput );
+                $('#submit').click( returnResult );
+                $('#submit').html( 'Continue' );
+                $('#submit').attr( 'disabled', 'disabled' );
+                setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 5250 );
+            }
         }
-        // TBD: response parsing
         // TBD: more forgiving for float equality?
         // TBD: save q2 response as number?
         // TBD: feedback alert or sth
         // TBD: keep track of errors
         // TBD: reading responses sensitive to whether given or not
+    }
+    function responseCorrect( response, key ) {
+        return responseType( key )=='integer list' ?
+            parseAsIntList( response ).toString()==key : 
+            parseAsSingleNum( response )==key ;
     }
     function responseInvalid( response, key, number ) {
         var invalid = false;
@@ -540,17 +574,12 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
             return parse[0];
         }
     }
-    var returnResult = function() {
+    function returnResult() {
         display_loc.html('');
-        time_complete   = ( new Date().getTime() - start_time.getTime() );
-        var end_time    = new Date();
-        var data        = $.extend( {}, trial_spec.data,
-            { "q1_response": q1_response, "q1_correct": Number(q1_correct),
-              "q2_response": q2_response, "q2_correct": Number(q2_correct),
-              "correct": Number(correct), "errors": errors,
-              "start": start_time.toString(), "end": end_time.toString(),
-              "rt": rt, "time_complete": time_complete } );
-        callback( data );
+        var end_time                = new Date();
+        trial_data['end']           = end_time.toString();
+        trial_data['time_complete'] = end_time.getTime() - start_time.getTime();
+        callback( $.extend( {}, trial_spec.data, trial_data ) );
     }
     // display trial content
     var content = "";
@@ -561,12 +590,15 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
     content     += "<p>" + trial_spec.q2_text + "</p>";
     content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q2_given ) ] + ")</p>";    // testing only
     content     += "<p><input type='text' id='q2_response' size='60'></p>";
+    content     += "<div id='feedback'></div>";
     content     += "<p><button type='button' id='submit'>Submit</button></p>";
     // TBD: visual cues to distinguish question from prompts
     // TBD: filled-in/disabled for givens - and, will need to revise text of prompts in those cases
     display_loc.html( content );
     $('#submit').click( processInput );
     window.scrollTo(0,0);
+    start_time          = new Date();
+    trial_data['start'] = start_time.toString();
 }
 
 
@@ -707,13 +739,13 @@ function getFeedback( category, trialtype, dataset, givens, corrects, num_errors
         feedback = false;
     } else if ( corrects.indexOf( false )==-1 ) {
         // no incorrect responses, so give correct feedback
-        feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct!</p>";
+        feedback = "<div class='feedback_correct'><p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct! Click 'Continue' to go on.</p><div>";
     } else if ( num_errors<=1 ) {
         // this is the first error, so they'll have to do it again
         // what follows is a placeholder, real content TBD
         // it's possible that in Intermediate cases where the SECOND solution step is given, it will be incorrect if calculated based on an incorrect first step response
         // in that case you might wish NOT to give error feedback for the second step
-        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
+        feedback = "<div class='feedback_incorrect'><p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
         if ( !corrects[0] ) {
             feedback += {
                 "Mean": "<p>Your answer to step 1 is not the correct sum of the numbers.</p>",
@@ -728,11 +760,10 @@ function getFeedback( category, trialtype, dataset, givens, corrects, num_errors
                 "Mode": "<p>Your answer to step 1 is not the number that appears most often once the numbers are re-arranged.</p>"
                 }[category];
         }
-        feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p>";
+        feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p></div>";
     } else {
         // this is the second error, so the correct answers will be filled in for them
-        // current feedback is a placeholder
-        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p><p>";
+        feedback = "<div class='feedback_incorrect'><p><img src='small-red-x-mark-th.png'>  " + " Oops!</p><p>";
         if ( (!corrects[0])&&(!corrects[1]) ) {
             feedback += "Your answers to steps 1 and 2 are ";
         } else if ( !corrects[0] ) {
@@ -740,7 +771,7 @@ function getFeedback( category, trialtype, dataset, givens, corrects, num_errors
         } else if ( !corrects[1] ) {
             feedback += "Your answer to step 2 is ";
         }
-        feedback += "still incorrect.</p><p>The correct answer has been filled in for you - please take a moment to read it. The 'Continue' button will reactive after a few moments.</p>";
+        feedback += "still incorrect.</p><p>The correct answer has been filled in for you - please take a moment to read it before going on. The 'Continue' button will reactive after a few moments.</p></div>";
     }
     return feedback;
 }
