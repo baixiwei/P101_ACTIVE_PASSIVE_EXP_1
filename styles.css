@@ -35,10 +35,12 @@ body { background-color: #7D110C; }
 
 .example { border: 1px solid black; margin-left: 20px; margin-right: 20px }
 
+.problem_text { border: 1px solid black; background-color: LightGray; padding: 10px; font-family: 'Palatino Linotype'; font-size: 18px; }
+
 #feedback { padding: 10px; margin-top: 30px; }
 #feedback img { width: 24px; vertical-align: text-top; } 
-.feedback_correct { border: 1px solid #afa; background-color: #dfd; }
-.feedback_incorrect {  border: 1px solid #faa; background-color: #fdd; }
+.feedback_correct { border: 1px solid #afa; background-color: #dfd; font-family: 'Palatino Linotype'; font-size: 18px; }
+.feedback_incorrect {  border: 1px solid #faa; background-color: #fdd; font-family: 'Palatino Linotype'; font-size: 18px; }
 
 .option_buttons {
     width:180px; height:60px;

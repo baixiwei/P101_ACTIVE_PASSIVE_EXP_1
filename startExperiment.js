@@ -424,6 +424,7 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
 }
 
 // create all the content needed to display the trial and return it as an associative array
+// TBD: passive & intermediate versions
 function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var category    = sequence.categories[trial_idx];                                       // category for current trial
     var trialtype   = sequence.trialtypes[trial_idx];                                       // trial type (passive, intermediate, active)
@@ -435,7 +436,8 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
                       generateNewDataset( problem.min, problem.max ) : prev_dataset;
     var dataset_str = stringifyDataset( dataset );                                          // pretty version of dataset
     var question    = getQuestion( problem, category );                                     // text of the question to be answered
-    var text        = progbar + probtxt + dataset_str + question;                           // text block to appear before prompts
+    var text        = progbar +                                                             // text block to appear before prompts
+                      "<div class='problem_text'>" + probtxt + dataset_str + question + "</div>";
     var q1_text     = getStepPrompt( category, 1, problem.ques );                           // text of first solution step prompt
     var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
     var q2_text     = getStepPrompt( category, 2, problem.ques );                           // text of second solution step prompt
@@ -452,11 +454,10 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
 }
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
+// TBD: passive & intermediate versions
 function displayTutorialTrial( display_loc, trial_spec, callback ) {
     var start_time, trial_data = {};
     trial_data['errors']    = 0;
-    // var q1_response, q1_correct, q2_response, q2_correct, correct, errors=0;
-    // var start_time=new Date(), rt, time_complete;
     // function to run when the trial is complete
     function processInput() {
         // record time submitted and read in responses
@@ -491,6 +492,7 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
             // display feedback after a pause
             var feedback = trial_spec.feedback_fn( [ q1_correct, q2_correct ], trial_data['errors'] );
             $('#feedback').html('');
+            $('#feedback').removeClass( 'feedback_correct feedback_incorrect' ).addClass( (q1_correct&&q2_correct) ? 'feedback_correct' : 'feedback_incorrect' );
             setTimeout( function() { $('#feedback').html( feedback ); }, 250 );
             // decide what to do after displaying feedback
             if ( q1_correct && q2_correct ) {
@@ -511,16 +513,11 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
                 setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 5250 );
             }
         }
-        // TBD: more forgiving for float equality?
-        // TBD: save q2 response as number?
-        // TBD: feedback alert or sth
-        // TBD: keep track of errors
-        // TBD: reading responses sensitive to whether given or not
     }
     function responseCorrect( response, key ) {
         return responseType( key )=='integer list' ?
             parseAsIntList( response ).toString()==key : 
-            parseAsSingleNum( response )==key ;
+            Math.abs( parseAsSingleNum( response ) - key ) <= 0.11 ;    // this standard is held over from previous exps
     }
     function responseInvalid( response, key, number ) {
         var invalid = false;
@@ -592,8 +589,6 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
     content     += "<p><input type='text' id='q2_response' size='60'></p>";
     content     += "<div id='feedback'></div>";
     content     += "<p><button type='button' id='submit'>Submit</button></p>";
-    // TBD: visual cues to distinguish question from prompts
-    // TBD: filled-in/disabled for givens - and, will need to revise text of prompts in those cases
     display_loc.html( content );
     $('#submit').click( processInput );
     window.scrollTo(0,0);
@@ -686,19 +681,17 @@ function getQuestion( problem, category ) {
         "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
 }
 
-// TBD: specify decimal places required, format details, etc.
-
 // generate prompts for solution steps 1 and 2 for each category
 function getStepPrompt( category, step, plural_noun ) {
     var prompts = {
         "Mean": [
             "Start by adding up all of the " + plural_noun + ". Write their sum here:",
-            "Now divide the sum by the total number of numbers. The result is the Mean. Write it here:" ],
+            "Now divide the sum by the total number of numbers. The result is the Mean. Write it here (round off decimals to two decimal places):" ],
         "Median": [
-            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here:",
+            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here (use commas or spaces to separate the numbers):",
             "Now find the middle number in the ordered sequence. That number is the Median. Write it here:" ],
         "Mode": [
-            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here:",
+            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here (use commas or spaces to separate the numbers):",
             "Now find which number is repeated the most often. That number is the Mode. Write it here:" ] };
     var prompt = prompts[category][step-1];
     return prompt;
@@ -729,23 +722,25 @@ function getStepPromptGivens( trialtype ) {
         }[trialtype];
 }
 
-// TBD: determine generate feedback to responses given by user during tutorial trial
+// generate feedback to responses given by user during tutorial trial
 // category, trialtype, dataset, and givens are plugged in when the trial starts
 // corrects (array giving correctness of responses to all solution step prompts) and num_errors (how many incorrect submissions so far) are passed in during the trial
 function getFeedback( category, trialtype, dataset, givens, corrects, num_errors ) {
     var feedback;
-    if ( trialtype=="Passive" ) {
+    // testing only
+    if ( false ) {
+    // if ( trialtype=="Passive" ) {
         // no feedback given for passive trials
         feedback = false;
     } else if ( corrects.indexOf( false )==-1 ) {
         // no incorrect responses, so give correct feedback
-        feedback = "<div class='feedback_correct'><p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct! Click 'Continue' to go on.</p><div>";
+        feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct! Click 'Continue' to go on.</p>";
     } else if ( num_errors<=1 ) {
         // this is the first error, so they'll have to do it again
         // what follows is a placeholder, real content TBD
         // it's possible that in Intermediate cases where the SECOND solution step is given, it will be incorrect if calculated based on an incorrect first step response
         // in that case you might wish NOT to give error feedback for the second step
-        feedback = "<div class='feedback_incorrect'><p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
+        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
         if ( !corrects[0] ) {
             feedback += {
                 "Mean": "<p>Your answer to step 1 is not the correct sum of the numbers.</p>",
@@ -760,10 +755,10 @@ function getFeedback( category, trialtype, dataset, givens, corrects, num_errors
                 "Mode": "<p>Your answer to step 1 is not the number that appears most often once the numbers are re-arranged.</p>"
                 }[category];
         }
-        feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p></div>";
+        feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p>";
     } else {
         // this is the second error, so the correct answers will be filled in for them
-        feedback = "<div class='feedback_incorrect'><p><img src='small-red-x-mark-th.png'>  " + " Oops!</p><p>";
+        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p><p>";
         if ( (!corrects[0])&&(!corrects[1]) ) {
             feedback += "Your answers to steps 1 and 2 are ";
         } else if ( !corrects[0] ) {
@@ -771,7 +766,7 @@ function getFeedback( category, trialtype, dataset, givens, corrects, num_errors
         } else if ( !corrects[1] ) {
             feedback += "Your answer to step 2 is ";
         }
-        feedback += "still incorrect.</p><p>The correct answer has been filled in for you - please take a moment to read it before going on. The 'Continue' button will reactive after a few moments.</p></div>";
+        feedback += "still incorrect.</p><p>The correct answer has been filled in for you - please take a moment to read it before going on. The 'Continue' button will reactive after a few moments.</p>";
     }
     return feedback;
 }
