@@ -14,6 +14,7 @@ var startExperiment_training_questions;
 var startExperiment_training_sequence;
 var startExperiment_skip;
 
+var TESTING = true;
 
 // startExperiment: assign global vars, randomize training questions, and run pretest
 function startExperiment( display_loc, prepend_data, pretest_questions, posttest_questions, training_questions, training_sequence ) {
@@ -23,6 +24,13 @@ function startExperiment( display_loc, prepend_data, pretest_questions, posttest
     startExperiment_posttest_questions  = posttest_questions;
     startExperiment_training_questions  = training_questions;
     startExperiment_training_sequence   = training_sequence;
+    if ( TESTING ) {
+        // specify the training problem sequence you want to see for testing
+        startExperiment_training_sequence   = {
+            "categories": [ "Mean", "Median", "Mode" ],
+            "probIDs": [ 1,1,1 ],
+            "trialtypes": [ "Active", "Active", "Active" ] };
+    }
     
 	// build skip object here
 	// var skip_training = false; // for debug purposes;
@@ -35,17 +43,20 @@ function startExperiment( display_loc, prepend_data, pretest_questions, posttest
 		{
 			var progress = JSON.parse(data);
 			// progress.training = skip_training;   // for debug purposes
-            progress.instructions = true;           // for development only, delete before going live
-			startExperiment_skip = progress;
-			
+            if ( TESTING ) { 
+                // specify the sections you want to skip for testing
+                progress.introduction   = true;
+                progress.pretest        = true;
+                progress.instructions   = true;
+                progress.training       = false;
+            }
+            startExperiment_skip = progress;
 			doIntroduction();
 		},
 		error: function()
 		{
 			var progress = { "introduction": false, "pretest": false, "instructions": false, "training": false, "posttest": false };
-            progress.instructions = true;           // for development only, delete before going live
 			startExperiment_skip = progress;
-			
 			doIntroduction();
 		}
 	});	
@@ -197,6 +208,10 @@ function doTraining() {
                 // trial_data will contain an array with each element representing the trial
                 // data can be accessed by name, i.e. trial_data[0].correct will indicate whether the first trial was correct or not.
                 var trial_data      = JSON.parse(data);
+                if ( TESTING ) {
+                    // if in testing mode, override recovered progress
+                    trial_data      = undefined;
+                }
                 var trial_idx       = (trial_data==undefined) ? 0 : trial_data.length;
                 var prev_dataset    = (trial_data==undefined) ? undefined : trial_data[trial_data.length-1]['dataset'].split(',').map( Number );
                 console.log( "doTraining(): Successfully restored tutorial progress with trial_idx " + trial_idx + "." );
@@ -424,27 +439,25 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
 }
 
 // create all the content needed to display the trial and return it as an associative array
-// TBD: passive & intermediate versions
 function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var category    = sequence.categories[trial_idx];                                       // category for current trial
     var trialtype   = sequence.trialtypes[trial_idx];                                       // trial type (passive, intermediate, active)
-    var progbar     = getProgressBar( trial_idx, sequence.probIDs.length );                 // progress bar
     var probID      = sequence.probIDs[trial_idx];
     var problem     = problems.filter( function(prob) { return prob.prbID==probID; } )[0];  // problem for current trial
-    var probtxt     = "<p>" + problem.text + "</p>";                                        // text of story
     var dataset     = ((trial_idx%3==0)||(prev_dataset==undefined)) ?                       // dataset for current trial
                       generateNewDataset( problem.min, problem.max ) : prev_dataset;
-    var dataset_str = stringifyDataset( dataset );                                          // pretty version of dataset
-    var question    = getQuestion( problem, category );                                     // text of the question to be answered
-    var text        = progbar +                                                             // text block to appear before prompts
-                      "<div class='problem_text'>" + probtxt + dataset_str + question + "</div>";
-    var q1_text     = getStepPrompt( category, 1, problem.ques );                           // text of first solution step prompt
-    var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
-    var q2_text     = getStepPrompt( category, 2, problem.ques );                           // text of second solution step prompt
-    var q2_key      = getStepKey( dataset, category, 2 );                                   // answer key for second step
-    var givens      = getStepPromptGivens( trialtype );                                     // determine which solution steps are to be presented already solved
+    var givens      = getStepPromptGivens( trialtype );                                     // which solution steps are to be presented already solved
     var q1_given    = givens[0];                                                            // whether answer to first step is given
     var q2_given    = givens[1];                                                            // whether answer to second step is given
+    var text        = getProgressBar( trial_idx, sequence.probIDs.length ) +                // progress bar
+                      "<div class='problem_text'><p>" + problem.text +                      // text of the problem back story
+                      stringifyDataset( dataset ) +                                         // pretty version of dataset
+                      getQuestion( problem, category ) + "</div>" +                         // text of the question to be answered
+                      getGivensExplanation( givens );                                       // explanation of which of the steps are already solved
+    var q1_text     = getStepPrompt( q1_given, category, 1, problem.ques );                 // text of first solution step prompt
+    var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
+    var q2_text     = getStepPrompt( q2_given, category, 2, problem.ques );                 // text of second solution step prompt
+    var q2_key      = getStepKey( dataset, category, 2 );                                   // answer key for second step
     var feedback_fn = function(corrects,num_errors) {                                       // function used during trial to generate feedback
         return getFeedback( category, trialtype, dataset, givens, corrects, num_errors ); };
     var data = {
@@ -454,7 +467,12 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
 }
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
-// TBD: passive & intermediate versions
+// TBD:
+// "correct answer has been filled in" turns red
+// active trial behavior
+// passive trial behavior
+// intermediate trial step 1 given behavior
+// intermediate trial step 2 given behavior
 function displayTutorialTrial( display_loc, trial_spec, callback ) {
     var start_time, trial_data = {};
     trial_data['errors']    = 0;
@@ -489,28 +507,39 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
                 trial_data['q2_correct']    = Number(q2_correct);
                 trial_data['correct']       = Number(q1_correct && q2_correct);
             }
-            // display feedback after a pause
-            var feedback = trial_spec.feedback_fn( [ q1_correct, q2_correct ], trial_data['errors'] );
-            $('#feedback').html('');
-            $('#feedback').removeClass( 'feedback_correct feedback_incorrect' ).addClass( (q1_correct&&q2_correct) ? 'feedback_correct' : 'feedback_incorrect' );
-            setTimeout( function() { $('#feedback').html( feedback ); }, 250 );
-            // decide what to do after displaying feedback
-            if ( q1_correct && q2_correct ) {
-                // if both responses are correct, let them go on
-                $('#submit').unbind( 'click', processInput );
-                $('#submit').click( returnResult );
-                $('#submit').html( 'Continue' );
-            } else if ( trial_data['errors']<=1 ) {
-                // if at least one response is incorrect and this is the first error, make them resubmit
-                $('#submit').attr( 'disabled', 'disabled' );
-                setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 2250 );
+            // if both solution steps are given, proceed
+            if ( trial_spec.q1_given && trial_spec.q2_given ) {
+                returnResult();
             } else {
-                // if at least one response is incorrect and this is the 2nd+ error, let them proceed after a delay
-                $('#submit').unbind( 'click', processInput );
-                $('#submit').click( returnResult );
-                $('#submit').html( 'Continue' );
-                $('#submit').attr( 'disabled', 'disabled' );
-                setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 5250 );
+                // otherwise display feedback after a pause
+                var feedback = trial_spec.feedback_fn( [ q1_correct, q2_correct ], trial_data['errors'] );
+                $('#feedback').html('');
+                $('#feedback').removeClass( 'feedback_correct feedback_incorrect' ).addClass( (q1_correct&&q2_correct) ? 'feedback_correct' : 'feedback_incorrect' );
+                setTimeout( function() { $('#feedback').html( feedback ); }, 250 );
+                // decide what to do after displaying feedback
+                if ( q1_correct && q2_correct ) {
+                    // if both responses are correct, let them go on
+                    $('#submit').unbind( 'click', processInput );
+                    $('#submit').click( returnResult );
+                    $('#submit').html( 'Continue' );
+                } else if ( trial_data['errors']<=1 ) {
+                    // if at least one response is incorrect and this is the first error, make them resubmit
+                    $('#submit').attr( 'disabled', 'disabled' );
+                    setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 2250 );
+                } else {
+                    // if at least one response is incorrect and this is the 2nd+ error, fill in the correct answer(s) and let them proceed after delay
+                    if ( !q1_correct ) {
+                        $('#q1_response').val( trial_spec.q1_key ).css( 'color', 'red' );
+                    }
+                    if ( !q2_correct ) {
+                        $('#q2_response').val( trial_spec.q2_key ).css( 'color', 'red' );
+                    }
+                    $('#submit').unbind( 'click', processInput );
+                    $('#submit').click( returnResult );
+                    $('#submit').html( 'Continue' );
+                    $('#submit').attr( 'disabled', 'disabled' );
+                    setTimeout( function() { $('#submit').removeAttr( 'disabled' ); }, 5250 );
+                }
             }
         }
     }
@@ -582,16 +611,22 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
     var content = "";
     content     += trial_spec.text;
     content     += "<p>" + trial_spec.q1_text + "</p>";
-    content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q1_given ) ] + ")</p>";    // testing only
     content     += "<p><input type='text' id='q1_response' size='60'></p>";
     content     += "<p>" + trial_spec.q2_text + "</p>";
-    content     += "<p>(solution " + [ "not given", "given" ][ Number( trial_spec.q2_given ) ] + ")</p>";    // testing only
     content     += "<p><input type='text' id='q2_response' size='60'></p>";
     content     += "<div id='feedback'></div>";
     content     += "<p><button type='button' id='submit'>Submit</button></p>";
     display_loc.html( content );
     $('#submit').click( processInput );
     window.scrollTo(0,0);
+    // if some of the solution steps are given, fill in their answers and disable the text boxes
+    if ( trial_spec.q1_given ) {
+        $('#q1_response').val( trial_spec.q1_key ).attr( 'disabled', 'disabled' );
+    }
+    if ( trial_spec.q2_given ) {
+        $('#q2_response').val( trial_spec.q2_key ).attr( 'disabled', 'disabled' );
+    }
+    // record start time
     start_time          = new Date();
     trial_data['start'] = start_time.toString();
 }
@@ -681,18 +716,46 @@ function getQuestion( problem, category ) {
         "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
 }
 
+// explanation of which steps are already solved
+function getGivensExplanation( givens ) {
+    if ( givens[0] && givens[1] ) {
+        return "<p>Both steps of the solution are already solved for you. Please read both steps and be sure you understand how the problem was solved, then click 'Submit.'</p>";
+    } else if ( givens[0] ) {
+        return "<p>The first step of the solution is already solved for you. Please read the solution, solve the second step yourself, and then click 'Submit.</p>";
+    } else if ( givens[1] ) {
+        return "<p>The second step of the solution is already solved for you. Once you solve the first step and click 'Submit,' the answer to the second step will appear. Be sure to read the solution to the second step once it appears.</p>";
+    } else {
+        return "";
+    }
+}
+
 // generate prompts for solution steps 1 and 2 for each category
-function getStepPrompt( category, step, plural_noun ) {
-    var prompts = {
-        "Mean": [
-            "Start by adding up all of the " + plural_noun + ". Write their sum here:",
-            "Now divide the sum by the total number of numbers. The result is the Mean. Write it here (round off decimals to two decimal places):" ],
-        "Median": [
-            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here (use commas or spaces to separate the numbers):",
-            "Now find the middle number in the ordered sequence. That number is the Median. Write it here:" ],
-        "Mode": [
-            "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here (use commas or spaces to separate the numbers):",
-            "Now find which number is repeated the most often. That number is the Mode. Write it here:" ] };
+function getStepPrompt( given, category, step, plural_noun ) {
+    if ( given ) {
+        // answer is given, prompt just explains the meaning of the step
+        var prompts = {
+            "Mean": [
+                "We start by adding up all of the " + plural_noun + ". Their sum is:",
+                "We now divide the sum by the total number of numbers. The result is the Mean:" ],
+            "Median": [
+                "We start by putting the " + plural_noun + " in order from smallest to largest. The result is:",
+                "We now find the middle number in the ordered sequence. That number is the Median:" ],
+            "Mode": [
+                "We start by putting the " + plural_noun + " in order from smallest to largest. The result is:",
+                "We now find which number is repeated the most often. That number is the Mode:" ] };
+    } else {
+        // answer is not given, prompt requires user to do the step
+        var prompts = {
+            "Mean": [
+                "Start by adding up all of the " + plural_noun + ". Write their sum here:",
+                "Now divide the sum by the total number of numbers. The result is the Mean. Write it here (round off decimals to two decimal places):" ],
+            "Median": [
+                "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here (use commas or spaces to separate the numbers):",
+                "Now find the middle number in the ordered sequence. That number is the Median. Write it here:" ],
+            "Mode": [
+                "Start by putting the " + plural_noun + " in order from smallest to largest. Write the result here (use commas or spaces to separate the numbers):",
+                "Now find which number is repeated the most often. That number is the Mode. Write it here:" ] };
+    }
     var prompt = prompts[category][step-1];
     return prompt;
 }
@@ -727,9 +790,7 @@ function getStepPromptGivens( trialtype ) {
 // corrects (array giving correctness of responses to all solution step prompts) and num_errors (how many incorrect submissions so far) are passed in during the trial
 function getFeedback( category, trialtype, dataset, givens, corrects, num_errors ) {
     var feedback;
-    // testing only
-    if ( false ) {
-    // if ( trialtype=="Passive" ) {
+    if ( trialtype=="Passive" ) {
         // no feedback given for passive trials
         feedback = false;
     } else if ( corrects.indexOf( false )==-1 ) {
@@ -751,8 +812,8 @@ function getFeedback( category, trialtype, dataset, givens, corrects, num_errors
         if ( !corrects[1] ) {
             feedback += {
                 "Mean": "<p>Your answer to step 2 is not the correct result of dividing the sum by the number of numbers.</p>",
-                "Median": "<p>Your answer to step 1 is not the number that is in the middle once the numbers are arranged from lowest to highest.</p>",
-                "Mode": "<p>Your answer to step 1 is not the number that appears most often once the numbers are re-arranged.</p>"
+                "Median": "<p>Your answer to step 2 is not the number that is in the middle once the numbers are arranged from lowest to highest.</p>",
+                "Mode": "<p>Your answer to step 2 is not the number that appears most often once the numbers are re-arranged.</p>"
                 }[category];
         }
         feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p>";

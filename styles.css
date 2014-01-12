@@ -16,6 +16,8 @@ button { font-family:'Palatino Linotype',sans-serif; font-size:14px; }
 
 body { background-color: #7D110C; }
 
+input[type=text] { font-size: 18px; }
+
 #wrapper { width: 600px; margin: 40px auto 0px auto; padding: 20px; border: 10px solid #DED8BF; background-color: white; }
 
 #consent { width: 600px; text-align: left; margin-left:auto; margin-right: auto; background: white; font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, FreeSerif, serif;}
