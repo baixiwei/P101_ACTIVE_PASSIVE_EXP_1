@@ -29,7 +29,7 @@ function startExperiment( display_loc, prepend_data, pretest_questions, posttest
         startExperiment_training_sequence   = {
             "categories": [ "Mean", "Median", "Mode" ],
             "probIDs": [ 1,1,1 ],
-            "trialtypes": [ "Active", "Active", "Active" ] };
+            "trialtypes": [ "Passive", "Passive", "Passive" ] };
     }
     
 	// build skip object here
@@ -468,8 +468,7 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
 // TBD:
-// "correct answer has been filled in" turns red
-// active trial behavior
+// x active trial behavior
 // passive trial behavior
 // intermediate trial step 1 given behavior
 // intermediate trial step 2 given behavior
@@ -719,11 +718,11 @@ function getQuestion( problem, category ) {
 // explanation of which steps are already solved
 function getGivensExplanation( givens ) {
     if ( givens[0] && givens[1] ) {
-        return "<p>Both steps of the solution are already solved for you. Please read both steps and be sure you understand how the problem was solved, then click 'Submit.'</p>";
+        return "<p class='explanation_text'>Both steps of the solution are already solved for you. Please read both steps and be sure you understand how the problem was solved, then click 'Submit.'</p>";
     } else if ( givens[0] ) {
-        return "<p>The first step of the solution is already solved for you. Please read the solution, solve the second step yourself, and then click 'Submit.</p>";
+        return "<p class='explanation_text'>The first step of the solution is already solved for you. Please read the solution, solve the second step yourself, and then click 'Submit.</p>";
     } else if ( givens[1] ) {
-        return "<p>The second step of the solution is already solved for you. Once you solve the first step and click 'Submit,' the answer to the second step will appear. Be sure to read the solution to the second step once it appears.</p>";
+        return "<p class='explanation_text'>The second step of the solution is already solved for you. Once you solve the first step and click 'Submit,' the answer to the second step will appear. Be sure to read the solution to the second step once it appears.</p>";
     } else {
         return "";
     }
