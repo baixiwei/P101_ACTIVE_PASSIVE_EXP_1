@@ -59,7 +59,7 @@ var startExperiment_training_questions;
 var startExperiment_training_sequence;
 var startExperiment_skip;
 
-var TESTING = true;
+var TESTING = false;
 
 // startExperiment: assign global vars, randomize training questions, and run pretest
 function startExperiment( display_loc, prepend_data, pretest_questions, posttest_questions, training_questions, training_sequence ) {
@@ -259,8 +259,9 @@ function doTraining() {
                 }
                 var trial_idx       = (trial_data==undefined) ? 0 : trial_data.length;
                 var prev_dataset    = (trial_data==undefined) ? undefined : trial_data[trial_data.length-1]['dataset'].split(',').map( Number );
-                console.log( "doTraining(): Successfully restored tutorial progress with trial_idx " + trial_idx + "." );
-                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, prev_dataset, callback );
+                var recovery        = trial_idx>0;
+                if ( recovery ) { console.log( "doTraining(): Successfully restored tutorial progress with trial_idx " + trial_idx + "." ); }
+                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, prev_dataset, recovery, callback );
                 // TBD: pass in some info that indicates if there was a recovery here?
             },
             error: function(){
@@ -268,7 +269,7 @@ function doTraining() {
                 // we do that by just creating a trial generator without previous progress information
                 console.log( "doTraining(): failed to recover tutorial progress." );
                 var trial_idx       = 0;
-                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, callback );
+                doTutorialTrial( startExperiment_display_loc, startExperiment_training_questions, startExperiment_training_sequence, startExperiment_prepend_data, trial_idx, [], false, callback );
             }
         });
     }
@@ -453,7 +454,7 @@ function doSlideshow( display_loc, content_array, callback ) {
 //////////////////////////////////////////////////////////////////////
 
 // do tutorial trials until you've run through all the trials specified in sequence, then call callback
-function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx, prev_dataset, callback ) {
+function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx, prev_dataset, recovery, callback ) {
     var endTrial = function( data ) {
         // save data, then increment idx and either call the callback or do another iteration
         var trial_data = $.extend( {}, prepend_data, data );
@@ -462,7 +463,7 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
         if ( (trial_idx+1)<sequence.probIDs.length ) {
             action = function(d) {
                 console.log(d);
-                doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx+1, new_dataset, callback );
+                doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_idx+1, new_dataset, false, callback );
             }
         } else {
             action = function(d) {
@@ -479,12 +480,12 @@ function doTutorialTrial( display_loc, problems, sequence, prepend_data, trial_i
             error: action
             } );
     }
-    var trial_spec = createTrialSpec( problems, sequence, trial_idx, prev_dataset );
+    var trial_spec = createTrialSpec( problems, sequence, trial_idx, prev_dataset, recovery );
     displayTutorialTrial( display_loc, trial_spec, endTrial );
 }
 
 // create all the content needed to display the trial and return it as an associative array
-function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
+function createTrialSpec( problems, sequence, trial_idx, prev_dataset, recovery ) {
     var category    = sequence.categories[trial_idx];                                       // category for current trial
     var trialtype   = sequence.trialtypes[trial_idx];                                       // trial type (passive, intermediate, active)
     var probID      = sequence.probIDs[trial_idx];
@@ -506,7 +507,7 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
     var feedback_fn = function(corrects,num_errors) {                                       // function used during trial to generate feedback
         return getFeedback( category, trialtype, dataset, givens, corrects, num_errors ); };
     var data = {
-        "trial_num": trial_idx, "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
+        "trial_num": trial_idx, "recovery": Number(recovery), "trialtype": trialtype, "storyidx": probID, "category": category, "dataset": dataset.toString(),
         "q1_key": q1_key, "q1_given": Number(q1_given), "q2_key": q2_key, "q2_given": Number(q2_given) };
     return { "text": text, "q1_text": q1_text, "q1_key": q1_key, "q1_given": q1_given, "q2_text": q2_text, "q2_key": q2_key, "q2_given": q2_given, "feedback_fn": feedback_fn, "data": data };
 }
