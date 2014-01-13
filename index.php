@@ -120,9 +120,17 @@ function getCondition($username) {
 }
 
 function assignCondition() {
-    // TODO: assign to the condition with the fewest number of subjects
-    
-    $cond = rand(1,21);
+    $result = mysql_query('SELECT cond, max(sid) FROM allusers');
+    $cond = 1;
+    if($result){
+        if(mysql_num_rows($result) > 0) {
+            $arr = mysql_fetch_array($result);
+            if($arr) { 
+                $cond = $arr['cond']+1;
+                if($cond>21) { $cond = 1; }
+            }
+        }
+    }
     return $cond;
 }
 	
