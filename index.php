@@ -120,7 +120,7 @@ function getCondition($username) {
 }
 
 function assignCondition() {
-    $result = mysql_query('SELECT cond, max(sid) FROM allusers');
+    $result = mysql_query('SELECT sid, cond FROM allusers ORDER BY sid DESC LIMIT 1');
     $cond = 1;
     if($result){
         if(mysql_num_rows($result) > 0) {
