@@ -34,7 +34,7 @@ input[type=text] { font-size: 18px; }
 #progressbar h4 { margin: 0; padding: 0; }
 #progressbar p { margin: 0; padding: 0; font-size: 14px; }
 
-
+.blacked-out { color: black; background-color: black }
 .example { border: 1px solid black; margin-left: 20px; margin-right: 20px }
 .problem_text { border: 1px solid black; background-color: LightGray; padding: 10px; font-family: 'Palatino Linotype'; font-size: 18px; }
 .explanation_text { background-color: Yellow }

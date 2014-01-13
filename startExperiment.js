@@ -467,11 +467,6 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset ) {
 }
 
 // display the trial in the given location using the given specs and call callback on trial data once complete
-// TBD:
-// x active trial behavior
-// passive trial behavior
-// intermediate trial step 1 given behavior
-// intermediate trial step 2 given behavior
 function displayTutorialTrial( display_loc, trial_spec, callback ) {
     var start_time, trial_data = {};
     trial_data['errors']    = 0;
@@ -521,6 +516,8 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
                     $('#submit').unbind( 'click', processInput );
                     $('#submit').click( returnResult );
                     $('#submit').html( 'Continue' );
+                    // also, reveal step 2 if it was blacked out before
+                    $('#q2_response').removeClass( 'blacked-out' );
                 } else if ( trial_data['errors']<=1 ) {
                     // if at least one response is incorrect and this is the first error, make them resubmit
                     $('#submit').attr( 'disabled', 'disabled' );
@@ -533,6 +530,8 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
                     if ( !q2_correct ) {
                         $('#q2_response').val( trial_spec.q2_key ).css( 'color', 'red' );
                     }
+                    // also, reveal step 2 if it was blacked out before
+                    $('#q2_response').removeClass( 'blacked-out' );
                     $('#submit').unbind( 'click', processInput );
                     $('#submit').click( returnResult );
                     $('#submit').html( 'Continue' );
@@ -624,6 +623,9 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
     }
     if ( trial_spec.q2_given ) {
         $('#q2_response').val( trial_spec.q2_key ).attr( 'disabled', 'disabled' );
+        if ( !trial_spec.q1_given ) {
+            $('#q2_response').addClass( 'blacked-out' );
+        }
     }
     // record start time
     start_time          = new Date();
@@ -789,49 +791,64 @@ function getStepPromptGivens( trialtype ) {
 // corrects (array giving correctness of responses to all solution step prompts) and num_errors (how many incorrect submissions so far) are passed in during the trial
 function getFeedback( category, trialtype, dataset, givens, corrects, num_errors ) {
     var feedback;
-    if ( trialtype=="Passive" ) {
-        // no feedback given for passive trials
-        feedback = false;
-    } else if ( corrects.indexOf( false )==-1 ) {
-        // no incorrect responses, so give correct feedback
-        feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct! Click 'Continue' to go on.</p>";
+    if ( corrects[0] && corrects[1] ) {
+        // both solution steps answered correctly
+        if ( givens[0] && givens[1] ) {
+            // i.e. it is a passive trial, so give no feedback at all
+            feedback = false;
+        } else if ( givens[0] ) {
+            // it is an intermediate trial with the first step given and second step answered correctly, so tell them they got it right
+            feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! Your answer for the second step is correct! Click 'Continue' to go on.</p>";
+        } else if ( givens[1] ) {
+            // it is an intermediate trial with the second step given and first step answered correctly, so draw their attention to the appearance of the second step solution
+            feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! Your answer for the first step is correct! The answer for the second step has been filled in - please read it before going on.</p>";
+        } else {
+            // active trial with no incorrect responses, so give correct feedback
+            feedback = "<p><img src='small-green-check-mark-th.png'>  " + " Great job! All your answers are correct! Click 'Continue' to go on.</p>";
+        }
     } else if ( num_errors<=1 ) {
-        // this is the first error, so they'll have to do it again
-        // what follows is a placeholder, real content TBD
-        // it's possible that in Intermediate cases where the SECOND solution step is given, it will be incorrect if calculated based on an incorrect first step response
-        // in that case you might wish NOT to give error feedback for the second step
+        // active or intermediate trial with at least one error, but it's the first incorrect submission, so they'll have to do it again
         feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
         if ( !corrects[0] ) {
             feedback += {
-                "Mean": "<p>Your answer to step 1 is not the correct sum of the numbers.</p>",
-                "Median": "<p>Your answer to step 1 is not the correct re-arrangement of the numbers from lowest to highest.</p>",
-                "Mode": "<p>Your answer to step 1 is not the correct re-arrangement of the numbers from lowest to highest.</p>"
+                "Mean": "<p>Your answer for the first step is not the correct sum of the numbers.</p>",
+                "Median": "<p>Your answer for the first step is not the correct re-arrangement of the numbers from lowest to highest.</p>",
+                "Mode": "<p>Your answer for the first step is not the correct re-arrangement of the numbers from lowest to highest.</p>"
                 }[category];
         }
         if ( !corrects[1] ) {
             feedback += {
-                "Mean": "<p>Your answer to step 2 is not the correct result of dividing the sum by the number of numbers.</p>",
-                "Median": "<p>Your answer to step 2 is not the number that is in the middle once the numbers are arranged from lowest to highest.</p>",
-                "Mode": "<p>Your answer to step 2 is not the number that appears most often once the numbers are re-arranged.</p>"
+                "Mean": "<p>Your answer for the second step is not the correct result of dividing the sum by the number of numbers.</p>",
+                "Median": "<p>Your answer for the second step is not the number that is in the middle once the numbers are arranged from lowest to highest.</p>",
+                "Mode": "<p>Your answer for the second step is not the number that appears most often once the numbers are re-arranged.</p>"
                 }[category];
         }
         feedback += "<p>Please try again. The 'Submit' button will reactivate after a few moments.</p>";
     } else {
-        // this is the second error, so the correct answers will be filled in for them
-        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p><p>";
-        if ( (!corrects[0])&&(!corrects[1]) ) {
-            feedback += "Your answers to steps 1 and 2 are ";
+        // active or intermediate trial submitted incorrect for the second time, so the correct answers will be filled in for them
+        feedback = "<p><img src='small-red-x-mark-th.png'>  " + " Oops!</p>";
+        if ( givens[0] ) {
+            // intermediate trial with first step given, so second step is incorrect
+            feedback += "<p>Your answer for the second step is still incorrect.</p><p>The correct answer has been filled in for you - please read it before going on. ";
+        } else if ( givens[1] ) {
+            // intermediate trial with second step given, so first step is incorrect, and second step will be revealed for the first time
+            feedback += "Your answer for the first step is still incorrect.</p><p>The correct answer has been filled in for you, and the answer to the second step has been filled in too - please read both steps before going on. ";
+        } else if ( (!corrects[0])&&(!corrects[1]) ) {
+            // active trial with both answers incorrect
+            feedback += "<p>Your answers to both steps are still incorrect.</p><p>The correct answers have been filled in for you - please read them before going on. ";
         } else if ( !corrects[0] ) {
-            feedback += "Your answer to step 1 is ";
+            // active trial with only first answer incorrect
+            feedback += "Your answer for the first step is still incorrect.</p><p>The correct answer has been filled in for you - please read it before going on. ";
         } else if ( !corrects[1] ) {
-            feedback += "Your answer to step 2 is ";
+            // active trial with only second answer incorrect
+            feedback += "<p>Your answer for the second step is still incorrect.</p><p>The correct answer has been filled in for you - please read it before going on. ";
         }
-        feedback += "still incorrect.</p><p>The correct answer has been filled in for you - please take a moment to read it before going on. The 'Continue' button will reactive after a few moments.</p>";
+        feedback += "The 'Continue' button will reactive after a delay.</p>";
     }
     return feedback;
 }
 
-/* // Old feedback function retained temporarily for reference.
+/* // Old getFeedback and doTrial retained temporarily for reference.
 function getFeedback( dataset, measure ) {
     var correct = "<p><img src='small-green-check-mark-th.png'>  " + " Yes, that's correct!</p>";
     var incorr  = "<p><img src='small-red-x-mark-th.png'>  " + " Oops, that's not correct.</p>";
@@ -854,8 +871,6 @@ function getFeedback( dataset, measure ) {
     incorr += "<p>(The continue buttons will appear after several seconds.)</p>";
     return { false: incorr, true: correct };
 }
-*/
-
 
 // doTrial: method of TrialSpec class, retained temporarily for reference
 //  display this.text and this.question in display_loc, plus an area for text entry and a button
@@ -945,6 +960,8 @@ function doTrial( display_loc, callback ) {
     var start_time = new Date();
     window.scrollTo(0,0);
 }
+*/
+
 
 
 //////////////////////////////////////////////////////////////////////
