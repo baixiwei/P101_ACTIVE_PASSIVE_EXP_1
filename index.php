@@ -154,7 +154,7 @@ function assignCondition() {
 
 
 var sid = <?php echo $_SESSION['studentid']; ?>;
-var username = <?php echo $_SESSION['user']; ?>;
+var username = "<?php echo $_SESSION['user']; ?>";
 var condition = <?php echo $_SESSION['condition']; ?>;
 var prepend_data = { "subjid": sid, "cond": condition }
 
