@@ -18,7 +18,7 @@ button { font-family:'Palatino Linotype',sans-serif; font-size:14px; }
 
 body { background-color: #7D110C; }
 
-input[type=text] { font-size: 18px; }
+input[type=text] { font-size: 18px }
 
 #wrapper { width: 600px; margin: 40px auto 0px auto; padding: 20px; border: 10px solid #DED8BF; background-color: white; }
 
@@ -36,6 +36,7 @@ input[type=text] { font-size: 18px; }
 #progressbar h4 { margin: 0; padding: 0; }
 #progressbar p { margin: 0; padding: 0; font-size: 14px; }
 
+.solution_step_input { width: 500px }
 .blacked-out { color: black; background-color: black }
 .example { border: 1px solid black; margin-left: 20px; margin-right: 20px }
 .problem_text { border: 1px solid black; background-color: LightGray; padding: 10px; font-family: 'Palatino Linotype'; font-size: 18px; }

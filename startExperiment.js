@@ -59,7 +59,7 @@ var startExperiment_training_questions;
 var startExperiment_training_sequence;
 var startExperiment_skip;
 
-var TESTING = true;
+var TESTING = false;
 
 // startExperiment: assign global vars, randomize training questions, and run pretest
 function startExperiment( display_loc, prepend_data, pretest_questions, posttest_questions, training_questions, training_sequence ) {
@@ -540,10 +540,10 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
                 } else {
                     // if at least one response is incorrect and this is the 2nd+ error, fill in the correct answer(s) and let them proceed after delay
                     if ( !q1_correct ) {
-                        $('#q1_response').val( trial_spec.q1_key ).css( 'color', 'red' );
+                        $('#q1_response').val( trial_spec.q1_key ).css( 'color', 'red' ).attr( 'disabled', 'disabled' );
                     }
                     if ( !q2_correct ) {
-                        $('#q2_response').val( trial_spec.q2_key ).css( 'color', 'red' );
+                        $('#q2_response').val( trial_spec.q2_key ).css( 'color', 'red' ).attr( 'disabled', 'disabled' );
                     }
                     // also, reveal step 2 if it was blacked out before
                     $('#q2_response').removeClass( 'blacked-out' );
@@ -556,65 +556,6 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
             }
         }
     }
-    /*
-    function responseCorrect( response, key ) {
-        return responseType( key )=='integer list' ?
-            parseAsIntList( response ).toString()==key : 
-            Math.abs( parseAsSingleNum( response ) - key ) <= 0.11 ;    // this standard is held over from previous exps
-    }
-    function responseInvalid( response, key, number ) {
-        var invalid = false;
-        if ( response==undefined ) {
-            invalid = "You seem to have left the " + [ "first", "second" ][ number-1 ] + " question blank.";
-        } else if ( response.replace( /\s+/g, '' )=="" ) {
-            invalid = "You seem to have left the " + [ "first", "second" ][ number-1 ] + " question blank.";
-        } else if ( responseType(key)=='integer list' ) {
-            // string key is assumed to be a list of numbers, so response should be interpretable as such, and have length>=1.
-            var arr = parseAsIntList( response );
-            if ( !arr ) {   // could not interpret as a list of integers
-                invalid = "The answer to the " + [ "first", "second" ][ number-1 ] + " question should be a list of numbers separated by commas or spaces.";
-            } else if ( arr.length<2 ) {    // does not contain more than one number
-                invalid = "The answer to the " + [ "first", "second" ][ number-1 ] + " question should be a list of numbers (not just one number).";
-            }
-        } else if ( responseType(key)=='single number' ) {
-            // non-string key should be a single number and nothing else
-            var num = parseAsSingleNum( response );
-            if ( num===false ) {    // could not interpret as a number
-                invalid = "The answer to the " + [ "first", "second" ][ number-1 ] + " question should be a single number (and nothing else).";
-            }
-        }
-        return invalid;
-    }
-    function responseType( key ) {
-        if ( typeof( key )=='string' ) {
-            if ( key.indexOf(',')!=-1 ) {
-                return 'integer list';
-            } else {
-                return 'single number';
-            }
-        } else {
-            return 'single number';
-        }
-    }
-    function parseAsIntList( response ) {
-        var parse = response.match( /[-+]?[0-9]*\.?[0-9]+/g );
-        if ( parse==null ) {
-            return false;
-        } else {
-            return parse;
-        }
-    }
-    function parseAsSingleNum( response ) {
-        var parse = parseAsIntList( response );
-        if ( parse===false ) {
-            return false;
-        } else if ( parse.length>1 ) {
-            return false;
-        } else {
-            return parse[0];
-        }
-    }
-    */
     function returnResult() {
         display_loc.html('');
         var end_time                = new Date();
@@ -626,9 +567,9 @@ function displayTutorialTrial( display_loc, trial_spec, callback ) {
     var content = "";
     content     += trial_spec.text;
     content     += "<p>" + trial_spec.q1_text + "</p>";
-    content     += "<p><input type='text' id='q1_response' size='60'></p>";
+    content     += "<p><input type='text' id='q1_response' size='60' class='solution_step_input'></p>";
     content     += "<p>" + trial_spec.q2_text + "</p>";
-    content     += "<p><input type='text' id='q2_response' size='60'></p>";
+    content     += "<p><input type='text' id='q2_response' size='60' class='solution_step_input'></p>";
     content     += "<div id='feedback'></div>";
     content     += "<p><button type='button' id='submit'>Submit</button></p>";
     display_loc.html( content );
