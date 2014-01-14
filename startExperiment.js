@@ -74,7 +74,7 @@ function startExperiment( display_loc, prepend_data, pretest_questions, posttest
         startExperiment_training_sequence   = {
             "categories": [ "Mean", "Median", "Mode", "Mean", "Median", "Mode" ],
             "probIDs": [ 1,1,1,1,1,1 ],
-            "trialtypes": [ "Passive", "Passive", "Passive", "Intermediate", "Intermediate", "Intermediate" ] };
+            "trialtypes": [ "Passive", "Intermediate", "Active", "Intermediate", "Intermediate", "Intermediate" ] };
     }
     
 	// build skip object here
@@ -467,11 +467,11 @@ function createTrialSpec( problems, sequence, trial_idx, prev_dataset, recovery 
     var text        = getProgressBar( trial_idx, sequence.probIDs.length ) +                // progress bar
                       "<div class='problem_text'><p>" + problem.text +                      // text of the problem back story
                       stringifyDataset( dataset ) +                                         // pretty version of dataset
-                      getQuestion( problem, category ) + "</div>" +                         // text of the question to be answered
-                      getGivensExplanation( givens );                                       // explanation of which of the steps are already solved
+                      getQuestion( problem, category ) + "</div>";                          // text of the question to be answered
     var q1_text     = getStepPrompt( q1_given, category, 1, problem.ques );                 // text of first solution step prompt
     var q1_key      = getStepKey( dataset, category, 1 );                                   // answer key for first step
-    var q2_text     = getStepPrompt( q2_given, category, 2, problem.ques );                 // text of second solution step prompt
+    var blacked_out = ( !q1_given && q2_given );                                            // whether the answer to the second step will be blacked out
+    var q2_text     = getStepPrompt( q2_given, category, 2, problem.ques, blacked_out );    // text of second solution step prompt
     var q2_key      = getStepKey( dataset, category, 2 );                                   // answer key for second step
     var check_valid = function( responses ) {                                               // function used during trial to check validity of responses & generate feedback
         return checkValidity( category, givens, responses ); };
@@ -734,39 +734,34 @@ function getQuestion( problem, category ) {
         "<p>Find the <em>" + category + "</em> of the " + problem.ques + ".</p>";
 }
 
-// explanation of which steps are already solved
-function getGivensExplanation( givens ) {
-    if ( givens[0] && givens[1] ) {
-        return "<p class='explanation_text'>Both steps of the solution are already solved for you. Please read both steps and be sure you understand how the problem was solved, then click 'Submit.'</p>";
-    } else if ( givens[0] ) {
-        return "<p class='explanation_text'>The first step of the solution is already solved for you. Please read the solution, solve the second step yourself, and then click 'Submit.</p>";
-    } else if ( givens[1] ) {
-        return "<p class='explanation_text'>The second step of the solution is already solved for you. Once you solve the first step and click 'Submit,' the answer to the second step will appear. Be sure to read the solution to the second step once it appears.</p>";
-    } else {
-        return "";
-    }
-}
-
 // generate prompts for solution steps 1 and 2 for each category
-function getStepPrompt( given, category, step, plural_noun ) {
-    if ( given ) {
+function getStepPrompt( given, category, step, plural_noun, blacked_out ) {
+    blacked_out = (blacked_out===undefined) ? false : blacked_out;
+    if ( blacked_out ) {
+        // this should only happen on the 2nd solution step, when its answer is given, but the answer to the previous step is not.
+        var prompt = {
+            "Mean": "We now divide the sum by the total number of numbers. The result is the Mean. This step will be done for you once you complete the first step.",
+            "Median": "We now find the middle number in the ordered sequence. That number is the Median. This step will be done for you once you complete the first step.",
+            "Mode": "We now find which number is repeated the most often. That number is the Mode. This step will be done for you once you complete the first step."
+            }[category];
+    } else if ( given ) {
         // answer is given, prompt just explains the meaning of the step
         var prompts = {
             "Mean": [
-                "We start by adding up all of the " + plural_noun + ". Their sum is:",
-                "We now divide the sum by the total number of numbers. The result is the Mean:" ],
+                "We start by adding up all of the " + plural_noun + ". This step is already done for you. The sum is:",
+                "We now divide the sum by the total number of numbers. The result is the Mean. This step is already done for you:" ],
             "Median": [
-                "We start by putting the " + plural_noun + " in order from smallest to largest. The result is:",
-                "We now find the middle number in the ordered sequence. That number is the Median:" ],
+                "We start by putting the " + plural_noun + " in order from smallest to largest. This step is already done for you. The result is:",
+                "We now find the middle number in the ordered sequence. That number is the Median. This step is already done for you:" ],
             "Mode": [
-                "We start by putting the " + plural_noun + " in order from smallest to largest. The result is:",
-                "We now find which number is repeated the most often. That number is the Mode:" ] };
+                "We start by putting the " + plural_noun + " in order from smallest to largest. This step is already done for you. The result is:",
+                "We now find which number is repeated the most often. That number is the Mode. This step is already done for you:" ] };
         var prompt = prompts[category][step-1];
     } else {
         // answer is not given, prompt requires user to recall and do the step
         var prompts = [
             "Fill in the answer to the first step here.",
-            "Now, based on your answer to the first step, fill in the " + category + " here:" ];
+            "Now, based on the answer to the first step, fill in the " + category + " here:" ];
         var prompt = prompts[step-1];
     }
     return prompt;
