@@ -154,6 +154,7 @@ function assignCondition() {
 
 
 var sid = <?php echo $_SESSION['studentid']; ?>;
+var username = <?php echo $_SESSION['user']; ?>;
 var condition = <?php echo $_SESSION['condition']; ?>;
 var prepend_data = { "subjid": sid, "cond": condition }
 
@@ -180,6 +181,7 @@ $.ajax({
 function show_consent_form() {
 	$("#welcome").html(
 		'<h1>Welcome to the tutorial on mean, median, and mode.</h1>\
+		<p>You are logged in as: '+username+'</p>\
 		<p>Before starting, you need to decide whether or not you give your consent to have your data analyzed for research purposes.\
 		You will need to complete the tutorial in order to receive credit for the homework assignment, but you may choose whether \
 		or not your responses are analyzed for research purposes.</p> \
