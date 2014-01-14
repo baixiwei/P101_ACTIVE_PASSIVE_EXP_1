@@ -311,7 +311,7 @@ function doDemographics() {
           
 // endExperiment: records completion data and displays completion message
 function endExperiment() {
-    startExperiment_display_loc.html( "<p>The tutorial is now complete and your data has been recorded. Thank you for your participation! You may now close this browser window.</p>" );
+    startExperiment_display_loc.html( "<p>The tutorial is now complete. Tutorial completion has been recorded for user "+username+". Thank you for your participation! You may now close this browser window.</p>" );
 }
 
 
