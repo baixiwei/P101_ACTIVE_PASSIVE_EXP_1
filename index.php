@@ -127,7 +127,7 @@ function assignCondition() {
             $arr = mysql_fetch_array($result);
             if($arr) { 
                 $cond = $arr['cond']+1;
-                if($cond>21) { $cond = 1; }
+                if($cond>20) { $cond = 0; }
             }
         }
     }
